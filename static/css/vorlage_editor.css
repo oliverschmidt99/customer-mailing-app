@@ -26,7 +26,7 @@
 .add-group-bar select { flex-grow: 1; }
 .modal-property-row {
     display: grid; grid-template-columns: 2fr 1fr 2fr auto;
-    gap: 1rem; align-items: center; margin-bottom: 0.5rem;
+    gap: 1rem; align-items: center;
 }
 .list-view-container { display: flex; flex-direction: column; gap: 1rem; }
 .group-list-item { padding: 1.5rem; background-color: var(--card-bg); }
@@ -43,7 +43,7 @@
 .list-item-header .toggle-icon.collapsed {
     transform: rotate(-90deg);
 }
-.list-item-header strong {
+.list-item-header .group-name-clickable {
     flex-grow: 1;
     font-size: 1.2em;
     cursor: pointer;
@@ -68,3 +68,39 @@
 }
 .button.edit { font-size: 0.9em; padding: 0.5rem 1rem; }
 .button.danger { font-size: 0.9em; padding: 0.5rem 1rem; }
+
+/* NEUE KLASSEN FÜR AUSGELAGERTE STILE */
+.template-notice {
+    color: var(--text-secondary);
+}
+
+.view-actions {
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.modal-property-item {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px dotted var(--border-color);
+}
+
+.modal-property-row-secondary {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 0.5rem;
+    padding-left: 1rem; /* kleine Einrückung */
+}
+
+.modal-property-row-secondary label {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    text-align: right;
+}
+
+.add-property-button {
+    margin-top: 1rem;
+}

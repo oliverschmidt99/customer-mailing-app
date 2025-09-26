@@ -1,8 +1,10 @@
 # app/services/importer_service.py
+"""This service handles the file import logic."""
 import os
-from werkzeug.utils import secure_filename
-from flask import current_app
 from typing import Dict, Any, List, Union
+
+from flask import current_app
+from werkzeug.utils import secure_filename
 
 # KORRIGIERTER IMPORT-PFAD: Nutzt relative Imports innerhalb des 'app'-Pakets
 from .importers import csv_importer, msg_importer, vcf_importer, xlsx_importer

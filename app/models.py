@@ -1,8 +1,9 @@
 # app/models.py
+"""This module defines the database models for the application."""
 import json
+from typing import Dict, Any
 
 from flask_sqlalchemy import SQLAlchemy
-from typing import Dict, Any
 
 db = SQLAlchemy()
 

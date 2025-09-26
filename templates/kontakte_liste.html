@@ -14,32 +14,32 @@
         <h1>Kontaktübersicht</h1>
         <div class="button-group">
             <div v-if="selectedKontakte.size > 0" class="bulk-actions">
-                <button @click="bulkDelete" class="button danger">
+                <button type="button" @click="bulkDelete" class="button danger">
                     <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Löschen">
                     {[ selectedKontakte.size ]} Löschen
                 </button>
             </div>
-            <button @click="openAddModal" class="button add">
+            <button type="button" @click="openAddModal" class="button add">
                 <img src="{{ url_for('static', filename='img/icon_plus.svg') }}" alt="Hinzufügen">
                 Kontakt hinzufügen
             </button>
-            <button @click="openImportModal" class="button secondary">
+            <button type="button" @click="openImportModal" class="button secondary">
                 <img src="{{ url_for('static', filename='img/icon_upload.svg') }}" alt="Importieren">
                 Importieren
             </button>
             <div class="dropdown">
-                <button class="button secondary">Exportieren</button>
+                <button type="button" class="button secondary">Exportieren</button>
                 <div class="dropdown-content">
-                    <a :href="getExportUrl('csv')" download>Als CSV</a>
-                    <a :href="getExportUrl('xlsx')" download>Als Excel (.xlsx)</a>
-                    <a :href="getExportUrl('pdf')" download>Als PDF (Druck)</a>
+                    <a :href="getExportUrl('csv')">Als CSV</a>
+                    <a :href="getExportUrl('xlsx')">Als Excel (.xlsx)</a>
+                    <a :href="getExportUrl('pdf')">Als PDF (Druck)</a>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="view-switcher">
-        <select v-model="activeVorlageId" class="input-field" style="width: 300px;">
+        <select v-model="activeVorlageId" class="input-field select-vorlage">
             <option v-for="vorlage in vorlagen" :key="vorlage.id" :value="vorlage.id">{[ vorlage.name ]}</option>
         </select>
     </div>
@@ -48,15 +48,16 @@
         <div class="filter-header" @click="isFilterVisible = !isFilterVisible">
             <span :class="['toggle-icon', { collapsed: !isFilterVisible }]">▼</span>
             <h3>Filter &amp; Spaltenreihenfolge</h3>
-            <button @click.stop="toggleEditOrderMode" class="button secondary filter-edit-button">
-                <img :src="'/static/img/icon_edit.svg'" alt="Edit">
+            <button type="button" @click.stop="toggleEditOrderMode" class="button secondary filter-edit-button">
+                <img :src="'/static/img/icon_edit.svg'" alt="Reihenfolge bearbeiten">
                 {[ editOrderMode ? 'Reihenfolge speichern' : 'Reihenfolge bearbeiten' ]}
             </button>
         </div>
         <div v-show="isFilterVisible" class="filter-body">
             <div v-for="gruppe in activeVorlage.gruppen" :key="gruppe.id" class="filter-group">
                 <div class="filter-group-header" @click="toggleGroupFilter(gruppe)">
-                    <img :src="getToggleIcon(gruppe)" class="group-toggle" :class="getGroupToggleState(gruppe)">
+                    <img :src="getToggleIcon(gruppe)" class="group-toggle" :class="getGroupToggleState(gruppe)"
+                        alt="Checkbox-Status">
                     <span v-if="editOrderMode" class="drag-handle">☰</span>
                     <span class="filter-group-title">{[ gruppe.name ]}</span>
                 </div>
@@ -101,8 +102,19 @@
                         <select v-else-if="eigenschaft.datentyp === 'Auswahl'" class="inline-select"
                             :value="kontakt.daten[eigenschaft.name]"
                             @change="updateField(kontakt, eigenschaft.name, $event.target.value)">
+                            <option value="">-- Bitte wählen --</option>
                             <option v-for="option in eigenschaft.optionen.split(',')" :key="option"
                                 :value="option.trim()">{[ option.trim() ]}</option>
+                        </select>
+                        <select
+                            v-else-if="eigenschaft.datentyp === 'Verknüpfung' && verknuepfungsOptionen[eigenschaft.id]"
+                            class="inline-select" :value="kontakt.daten[eigenschaft.name]"
+                            @change="updateField(kontakt, eigenschaft.name, $event.target.value)">
+                            <option value="">-- Keine Verknüpfung --</option>
+                            <option v-for="option in verknuepfungsOptionen[eigenschaft.id]" :key="option.id"
+                                :value="option.id">
+                                {[ option.display_name ]}
+                            </option>
                         </select>
                         <span v-else>{[ kontakt.daten[eigenschaft.name] ]}</span>
                     </td>
@@ -132,7 +144,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Neuen Kontakt erstellen</h2>
-                <button @click="closeAddModal" class="modal-close-btn">&times;</button>
+                <button type="button" @click="closeAddModal" class="modal-close-btn">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -150,8 +162,8 @@
                 </div>
             </div>
             <div class="modal-actions">
-                <button @click="closeAddModal" class="button secondary">Abbrechen</button>
-                <button @click="saveNewContact" class="button">Speichern</button>
+                <button type="button" @click="closeAddModal" class="button secondary">Abbrechen</button>
+                <button type="button" @click="saveNewContact" class="button">Speichern</button>
             </div>
         </div>
     </div>
@@ -160,7 +172,7 @@
         <div class="modal-content modal-large">
             <div class="modal-header">
                 <h2>{[ importStep === 1 ? 'Daten importieren (Schritt 1/2)' : 'Daten zuordnen (Schritt 2/2)' ]}</h2>
-                <button @click="closeImportModal" class="modal-close-btn">&times;</button>
+                <button type="button" @click="closeImportModal" class="modal-close-btn">&times;</button>
             </div>
             <div class="modal-body">
                 <div v-if="importStep === 1">
@@ -200,13 +212,15 @@
                             </div>
                         </template>
                     </div>
-                    <div v-if="importError" class="alert-danger" style="margin-top: 1rem;">{[ importError ]}</div>
+                    <div v-if="importError" class="alert-danger error-margin-top">{[ importError ]}</div>
                 </div>
             </div>
             <div class="modal-actions">
-                <button @click="closeImportModal" class="button secondary">Abbrechen</button>
-                <button v-if="importStep === 2" @click="importStep = 1" class="button secondary">Zurück</button>
-                <button v-if="importStep === 2" @click="finalizeImport" class="button">Import abschließen</button>
+                <button type="button" @click="closeImportModal" class="button secondary">Abbrechen</button>
+                <button type="button" v-if="importStep === 2" @click="importStep = 1"
+                    class="button secondary">Zurück</button>
+                <button type="button" v-if="importStep === 2" @click="finalizeImport" class="button">Import
+                    abschließen</button>
             </div>
         </div>
     </div>

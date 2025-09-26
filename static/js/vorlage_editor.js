@@ -23,13 +23,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const actionUrl = ref(
         document.getElementById("action-url-data").textContent.slice(1, -1)
       );
+      // NEU: Lade die globalen Auswahloptionen
+      const selectionOptions = ref(
+        JSON.parse(
+          document.getElementById("selection-options-data").textContent
+        )
+      );
 
       // Reaktive Zustände
       const vorlage = ref(JSON.parse(JSON.stringify(initialVorlageData))); // Tiefe Kopie als Arbeitskopie
       const isSaveAsModalOpen = ref(false);
       const newVorlageName = ref("");
       const suggestions = ref({ categories: [] });
-      const selectionOptions = ref([]);
       const selectedSuggestionCategory = ref(null);
       const viewMode = ref("list");
       const activeModal = ref(null);
@@ -43,7 +48,6 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       // --- Computed Properties ---
-
       const pageTitle = computed(() => {
         if (initialVorlageData.is_standard) {
           return `Standard-Vorlage: ${initialVorlageData.name}`;
@@ -61,6 +65,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // --- Methoden ---
 
+      const applyGlobalOption = (event, propertyIndex) => {
+        const selectedOptionName = event.target.value;
+        if (selectedOptionName && selectionOptions.value[selectedOptionName]) {
+          const values = selectionOptions.value[selectedOptionName];
+          editedGroup.value.eigenschaften[propertyIndex].optionen =
+            values.join(", ");
+        }
+      };
+
       const handleSave = () => {
         if (initialVorlageData.is_standard && hasChanges.value) {
           newVorlageName.value = initialVorlageData.name + " (Kopie)";
@@ -75,6 +88,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         alert("Keine Änderungen zum Speichern vorhanden.");
       };
+
+      // ... Rest der JS-Datei bleibt unverändert ...
+      // (saveVorlage, saveAsNewVorlage, toggleGroupCollapse, etc.)
 
       const saveVorlage = async () => {
         try {
@@ -179,12 +195,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       onMounted(async () => {
         try {
-          const [suggResponse, selOptResponse] = await Promise.all([
-            fetch("/api/attribute-suggestions"),
-            fetch("/api/selection-options"),
-          ]);
+          const suggResponse = await fetch("/api/attribute-suggestions");
           suggestions.value = await suggResponse.json();
-          selectionOptions.value = (await selOptResponse.json()).options;
         } catch (error) {
           console.error("Fehler:", error);
         }
@@ -281,7 +293,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return {
         vorlage,
         suggestions,
-        selectionOptions,
+        selectionOptions, // <-- NEU
         pageTitle,
         selectedSuggestionCategory,
         viewMode,
@@ -304,6 +316,7 @@ document.addEventListener("DOMContentLoaded", () => {
         removeGruppe,
         expandAll,
         collapseAll,
+        applyGlobalOption, // <-- NEU
       };
     },
   });

@@ -125,7 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       watch(
         activeVorlage,
-        (newVorlage) => {
+        async (newVorlage) => {
           if (newVorlage) {
             const newFilterState = {};
             newVorlage.gruppen
@@ -134,45 +134,55 @@ document.addEventListener("DOMContentLoaded", () => {
                 newFilterState[e.name] = true;
               });
             filterState.value = newFilterState;
+
+            // Lade Verknüpfungsoptionen für die neue Vorlage
+            verknuepfungsOptionen.value = {};
+            const optionPromises = [];
+            for (const gruppe of newVorlage.gruppen) {
+              for (const eigenschaft of gruppe.eigenschaften) {
+                if (
+                  eigenschaft.datentyp === "Verknüpfung" &&
+                  eigenschaft.optionen.startsWith("vorlage_id:")
+                ) {
+                  const linkedVorlageId = eigenschaft.optionen.split(":")[1];
+                  const promise = fetch(
+                    `/api/kontakte-by-vorlage/${linkedVorlageId}`
+                  )
+                    .then((response) => (response.ok ? response.json() : []))
+                    .then((data) => {
+                      verknuepfungsOptionen.value[eigenschaft.id] = data;
+                    })
+                    .catch((error) => {
+                      console.error(
+                        "Fehler beim Laden der Verknüpfungs-Optionen:",
+                        error
+                      );
+                      verknuepfungsOptionen.value[eigenschaft.id] = [];
+                    });
+                  optionPromises.push(promise);
+                }
+              }
+            }
+            await Promise.all(optionPromises);
           }
         },
         { immediate: true }
       );
 
-      watch(addModalVorlage, async (newVorlage) => {
-        newContactData.value = {};
-        if (!newVorlage) return;
-        verknuepfungsOptionen.value = {};
-        for (const gruppe of newVorlage.gruppen) {
-          for (const eigenschaft of gruppe.eigenschaften) {
-            if (
-              eigenschaft.datentyp === "Verknüpfung" &&
-              eigenschaft.optionen.startsWith("vorlage_id:")
-            ) {
-              const linkedVorlageId = eigenschaft.optionen.split(":")[1];
-              try {
-                const response = await fetch(
-                  `/api/kontakte-by-vorlage/${linkedVorlageId}`
-                );
-                if (response.ok) {
-                  verknuepfungsOptionen.value[eigenschaft.id] =
-                    await response.json();
-                } else {
-                  verknuepfungsOptionen.value[eigenschaft.id] = [];
-                }
-              } catch (error) {
-                console.error(
-                  "Fehler beim Laden der Verknüpfungs-Optionen:",
-                  error
-                );
-                verknuepfungsOptionen.value[eigenschaft.id] = [];
-              }
-            }
-          }
-        }
-      });
-
       // --- Methoden ---
+      const getVerknuepfungDisplayName = (eigenschaft, kontaktId) => {
+        if (
+          !eigenschaft ||
+          !kontaktId ||
+          !verknuepfungsOptionen.value[eigenschaft.id]
+        ) {
+          return `ID: ${kontaktId}`;
+        }
+        const options = verknuepfungsOptionen.value[eigenschaft.id];
+        const found = options.find((opt) => opt.id == kontaktId); // Use == for loose comparison
+        return found ? found.display_name : `ID: ${kontaktId} (ungültig)`;
+      };
+
       const sortBy = (columnName) => {
         if (sortColumn.value === columnName) {
           sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
@@ -483,6 +493,7 @@ document.addEventListener("DOMContentLoaded", () => {
         handleFileUpload,
         finalizeImport,
         getExportUrl,
+        getVerknuepfungDisplayName,
       };
     },
   });

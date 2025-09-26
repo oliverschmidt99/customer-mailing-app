@@ -11,12 +11,46 @@
 
 <div class="card">
     <h2>Design</h2>
-    <div style="display: flex; align-items: center; gap: 1rem;">
-        <label for="theme-toggle" style="margin: 0; font-weight: 500;">Dark Mode</label>
+    <div class="theme-switcher-container">
+        <label for="theme-toggle" class="theme-switcher-label">Dark Mode</label>
         <label class="switch">
             <input type="checkbox" id="theme-toggle">
             <span class="slider round"></span>
         </label>
+    </div>
+</div>
+
+<div id="selection-options-app" class="card">
+    <h2>Globale Auswahloptionen</h2>
+    <p>Hier kannst du die vordefinierten Listen für "Auswahl"-Felder in deinen Vorlagen zentral verwalten.</p>
+
+    <div v-for="(optionGroup, index) in options" :key="index" class="option-group">
+        <div class="form-group">
+            <label>Name der Liste:</label>
+            <input type="text" v-model="optionGroup.name" class="input-field" placeholder="z.B. Anrede, Status">
+        </div>
+        <div class="form-group">
+            <label>Werte (kommagetrennt):</label>
+            <textarea v-model="optionGroup.values" class="input-field" rows="2"
+                placeholder="z.B. Herr, Frau, Divers"></textarea>
+        </div>
+        <button type="button" @click="removeOption(index)" class="button danger small">
+            <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Löschen">
+            Liste entfernen
+        </button>
+    </div>
+
+    <div class="button-group option-actions">
+        <button type="button" @click="addOption" class="button secondary">
+            <img src="{{ url_for('static', filename='img/icon_plus.svg') }}" alt="Hinzufügen">
+            Neue Liste hinzufügen
+        </button>
+        <button type="button" @click="saveOptions" class="button" :disabled="!hasChanges">
+            Änderungen speichern
+        </button>
+    </div>
+    <div v-if="saveStatus" :class="['save-status', { 'success': isSuccess, 'error': !isSuccess }]">
+        {[ saveStatus ]}
     </div>
 </div>
 
@@ -27,15 +61,19 @@
         Ordner
         <code>backups</code> angelegt.
     </p>
-    <div class="info-box"
-        style="margin-top: 1rem; padding: 1rem; background-color: var(--card-active-bg); border-radius: 6px;">
+    <div class="info-box">
         <strong>Info:</strong> Die manuelle Wiederherstellung einer Datenbank muss derzeit direkt über das Dateisystem
         erfolgen, indem eine Backup-Datei in den <code>instance</code>-Ordner kopiert und in
         <code>kundenverwaltung.db</code> umbenannt wird.
     </div>
 </div>
+
+<script type="application/json" id="selection-options-data">
+    {{ selection_options|tojson|safe }}
+</script>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 {% endblock %}

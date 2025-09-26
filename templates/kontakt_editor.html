@@ -15,10 +15,10 @@
 
     <form id="kontaktForm" method="POST" action="{{ action_url }}">
         <div class="form-container">
-            <h2>Kontaktdaten (Vorlage: {{ vorlage_for_json|fromjson.name }})</h2>
+            <h2>Kontaktdaten (Vorlage: {{ vorlage_for_template.name }})</h2>
 
             <div id="kontakt_attributes" class="kontakt-attributes">
-                {% for key, value in kontakt_daten_for_json|fromjson.items() %}
+                {% for key, value in kontakt_daten_for_template.items() %}
                 {% if key != 'Verknüpfungen' %}
                 <div class="attribute-field">
                     <label>{{ key }}</label>

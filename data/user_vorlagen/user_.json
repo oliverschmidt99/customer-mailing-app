@@ -1,5 +1,5 @@
 {
-  "name": "test",
+  "name": "",
   "gruppen": [
     {
       "name": "Allgemeine Attribute",
@@ -43,11 +43,6 @@
           "name": "Post",
           "datentyp": "Auswahl",
           "optionen": "Digital 💻, Post 📬, Kalender 📅, Persönlich 🤝"
-        },
-        {
-          "name": "Mitarbeiter",
-          "datentyp": "Verknüpfung",
-          "optionen": ""
         }
       ]
     }

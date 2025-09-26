@@ -45,3 +45,64 @@ input:checked+.slider:before {
 .slider.round:before {
     border-radius: 50%;
 }
+
+/* NEUE KLASSEN FÜR AUSGELAGERTE STILE */
+.theme-switcher-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.theme-switcher-label {
+    margin: 0;
+    font-weight: 500;
+}
+
+.option-actions {
+    margin-top: 1.5rem;
+    justify-content: space-between;
+}
+
+.info-box {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: var(--card-active-bg);
+    border-radius: 6px;
+}
+
+.option-group {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    background-color: var(--bg-main);
+}
+
+.button.small {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85em;
+}
+
+.button.small img {
+    height: 14px;
+    width: 14px;
+}
+
+.save-status {
+    margin-top: 1rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.save-status.success {
+    background-color: #d1e7dd;
+    color: #0f5132;
+    border: 1px solid #badbcc;
+}
+
+.save-status.error {
+    background-color: #f8d7da;
+    color: #842029;
+    border: 1px solid #f5c2c7;
+}

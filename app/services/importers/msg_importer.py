@@ -1,4 +1,5 @@
 # app/services/importers/msg_importer.py
+"""This module handles the import of .msg files."""
 import os
 import re
 import subprocess
@@ -165,9 +166,13 @@ def parse_msg_file(file_path: str) -> Union[List[Dict[str, Any]], Dict[str, str]
                 break
 
         if not found_txt_path:
-            return {
-                "error": "Konnte keine extrahierte Textdatei (.txt) aus der MSG-Datei finden. Dies geschieht oft bei Kontakten, die nur Metadaten oder nicht unterstützte Formate enthalten."
-            }
+            # Zeile umgebrochen für bessere Lesbarkeit
+            error_msg = (
+                "Konnte keine extrahierte Textdatei (.txt) aus der MSG-Datei finden. "
+                "Dies geschieht oft bei Kontakten, die nur Metadaten oder nicht "
+                "unterstützte Formate enthalten."
+            )
+            return {"error": error_msg}
 
         # Verwende den gefundenen Pfad
         with open(found_txt_path, "r", encoding="utf-8", errors="ignore") as file:

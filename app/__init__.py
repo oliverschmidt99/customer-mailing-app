@@ -1,7 +1,8 @@
 # app/__init__.py
+"""This module initializes the Flask application."""
 import os
 import json
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any
 
 from flask import Flask
 from flask_migrate import Migrate
@@ -80,13 +81,14 @@ def create_app() -> Flask:
     Migrate(app, db)
 
     with app.app_context():
-        # Blueprints (Routen-Gruppen) registrieren (C0415 Import inside function)
-        from .routes import main, vorlagen, kontakte, api, import_export
+        # pylint: disable=import-outside-toplevel, cyclic-import
+        from .routes import main, vorlagen, kontakte, api, import_export, settings
 
         app.register_blueprint(main.bp)
         app.register_blueprint(vorlagen.bp)
         app.register_blueprint(kontakte.bp)
         app.register_blueprint(api.bp)
         app.register_blueprint(import_export.bp)
+        app.register_blueprint(settings.bp)  # <-- NEU
 
         return app

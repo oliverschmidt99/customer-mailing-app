@@ -12,14 +12,14 @@
         <h1>{[ pageTitle ]}</h1>
         <div class="button-group">
             <a href="{{ url_for('vorlagen.verwalten') }}" class="button secondary">Abbrechen</a>
-            <button @click="handleSave" class="button">Vorlage Speichern</button>
+            <button type="button" @click="handleSave" class="button">Vorlage Speichern</button>
         </div>
     </div>
 
     <div class="form-group">
         <label for="vorlage-name">Name der Vorlage:</label>
         <input type="text" id="vorlage-name" v-model="vorlage.name" class="input-field" :disabled="vorlage.is_standard">
-        <small v-if="vorlage.is_standard" style="color: var(--text-secondary);">Standardvorlagen können nicht direkt
+        <small v-if="vorlage.is_standard" class="template-notice">Standardvorlagen können nicht direkt
             geändert werden. Änderungen werden als neue Vorlage gespeichert.</small>
     </div>
 
@@ -28,87 +28,38 @@
             <option :value="null">Gruppe aus Vorschlag wählen...</option>
             <option v-for="cat in suggestions.categories" :key="cat.name" :value="cat">{[ cat.name ]}</option>
         </select>
-        <button @click="addGroupFromSuggestion" class="button">Hinzufügen</button>
-        <button @click="addEmptyGruppe" class="button secondary">Leere Gruppe</button>
+        <button type="button" @click="addGroupFromSuggestion" class="button">Hinzufügen</button>
+        <button type="button" @click="addEmptyGruppe" class="button secondary">Leere Gruppe</button>
     </div>
 
     <div class="view-switcher">
-        <button @click="viewMode = 'list'" :class="{ active: viewMode === 'list' }">Listenansicht</button>
-        <button @click="viewMode = 'tile'" :class="{ active: viewMode === 'tile' }">Kachelansicht</button>
+        <button type="button" @click="viewMode = 'list'" :class="{ active: viewMode === 'list' }">Listenansicht</button>
+        <button type="button" @click="viewMode = 'tile'" :class="{ active: viewMode === 'tile' }">Kachelansicht</button>
     </div>
 
-    <div v-if="viewMode === 'list'" class="view-actions" style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem;">
-        <button @click="expandAll" class="button secondary">Alles Auffalten</button>
-        <button @click="collapseAll" class="button secondary">Alles Zuklappen</button>
+    <div v-if="viewMode === 'list'" class="view-actions">
+        <button type="button" @click="expandAll" class="button secondary">Alles Auffalten</button>
+        <button type="button" @click="collapseAll" class="button secondary">Alles Zuklappen</button>
     </div>
 
     <div v-if="viewMode === 'list'" id="group-list-container" class="list-view-container">
-        <div v-for="(gruppe, index) in vorlage.gruppen" :key="index" class="group-list-item">
-            <div class="list-item-header">
-                <span @click="toggleGroupCollapse(index)"
-                    :class="['toggle-icon', { collapsed: collapsedGroups[index] }]">▼</span>
-                <span class="drag-handle" @click.stop>☰</span>
-                <strong @click="toggleGroupCollapse(index)" style="flex-grow: 1; cursor: pointer;">{[ gruppe.name
-                    ]}</strong>
-                <div class="tile-actions">
-                    <button @click.stop="openGroupEditModal(index)" class="icon-btn edit" title="Gruppe bearbeiten">
-                        <img src="{{ url_for('static', filename='img/icon_edit.svg') }}" alt="Bearbeiten">
-                    </button>
-                    <button @click.stop="removeGruppe(index)" class="icon-btn delete" title="Gruppe löschen">
-                        <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Löschen">
-                    </button>
-                </div>
-            </div>
-            <div v-show="!collapsedGroups[index]" class="property-list-container" :data-group-index="index">
-                <div v-if="gruppe.eigenschaften.length > 0">
-                    <div v-for="(eigenschaft, pIndex) in gruppe.eigenschaften" :key="pIndex" class="property-list-item">
-                        <span class="drag-handle">☰</span>
-                        <span class="property-name">{[ eigenschaft.name ]}</span>
-                        <span class="property-type-badge">{[ eigenschaft.datentyp ]}</span>
-                    </div>
-                </div>
-                <div v-else class="empty-properties-info">
-                    Diese Gruppe hat noch keine Eigenschaften.
-                </div>
-            </div>
-        </div>
     </div>
 
     <div v-if="activeModal === 'groupEdit'" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Gruppe bearbeiten</h2>
-                <button @click="closeModal" class="modal-close-btn" title="Schließen">&times;</button>
+                <button type="button" @click="closeModal" class="modal-close-btn" title="Schließen">&times;</button>
             </div>
             <div class="modal-body" v-if="editedGroup">
-                <div class="form-group">
-                    <label>Gruppenname:</label>
-                    <input type="text" v-model="editedGroup.name" class="input-field">
-                </div>
-                <hr>
-                <h4>Eigenschaften:</h4>
-                <div v-for="(prop, pIndex) in editedGroup.eigenschaften" :key="pIndex" class="modal-property-row">
-                    <input type="text" v-model="prop.name" placeholder="Name" class="input-field">
-                    <select v-model="prop.datentyp" class="input-field">
-                        <option>Text</option>
-                        <option>Auswahl</option>
-                        <option>Datum</option>
-                        <option>Verknüpfung</option>
-                    </select>
-                    <input type="text" v-model="prop.optionen" placeholder="Optionen (kommagetrennt)"
-                        class="input-field">
-                    <button @click="removeEigenschaft(pIndex)" class="icon-btn delete" title="Eigenschaft entfernen">
-                        <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Löschen">
-                    </button>
-                </div>
-                <button @click="addEigenschaft" class="button secondary" style="margin-top: 1rem;">
+                <button type="button" @click="addEigenschaft" class="button secondary add-property-button">
                     <img src="{{ url_for('static', filename='img/icon_plus.svg') }}" alt="Hinzufügen">
                     Eigenschaft hinzufügen
                 </button>
             </div>
             <div class="modal-actions">
-                <button @click="closeModal" class="button secondary">Abbrechen</button>
-                <button @click="saveGroup" class="button">Speichern</button>
+                <button type="button" @click="closeModal" class="button secondary">Abbrechen</button>
+                <button type="button" @click="saveGroup" class="button">Speichern</button>
             </div>
         </div>
     </div>
@@ -117,32 +68,16 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Als neue Vorlage speichern</h2>
-                <button @click="isSaveAsModalOpen = false" class="modal-close-btn" title="Schließen">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>Du bearbeitest eine Standardvorlage. Deine Änderungen müssen als neue, benutzerdefinierte Vorlage
-                    gespeichert werden.</p>
-                <div class="form-group">
-                    <label for="new-vorlage-name">Name der neuen Vorlage:</label>
-                    <input type="text" id="new-vorlage-name" v-model="newVorlageName" class="input-field">
-                </div>
+                <button type="button" @click="isSaveAsModalOpen = false" class="modal-close-btn"
+                    title="Schließen">&times;</button>
             </div>
             <div class="modal-actions">
-                <button @click="isSaveAsModalOpen = false" class="button secondary">Abbrechen</button>
-                <button @click="saveAsNewVorlage" class="button">Speichern</button>
+                <button type="button" @click="isSaveAsModalOpen = false" class="button secondary">Abbrechen</button>
+                <button type="button" @click="saveAsNewVorlage" class="button">Speichern</button>
             </div>
         </div>
     </div>
 
 </div>
 
-<script type="application/json" id="vorlage-data">{{ vorlage_data|safe }}</script>
-<script type="application/json" id="action-url-data">{{ action_url|tojson|safe }}</script>
-<script type="application/json" id="all-vorlagen-data">{{ all_vorlagen_data|safe }}</script>
-{% endblock %}
-
-{% block scripts %}
-<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-<script src="{{ url_for('static', filename='js/vorlage_editor.js') }}"></script>
 {% endblock %}
