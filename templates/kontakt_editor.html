@@ -1,138 +1,123 @@
 <!DOCTYPE html>
 {% extends "base.html" %}
-{% block title %}Vorlagen-Editor{% endblock %}
+{% block title %}{{ 'Kontakt bearbeiten' if kontakt else 'Neuer Kontakt' }}{% endblock %}
 
 {% block head_styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/vorlage_editor.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/kontakte.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
 {% endblock %}
 
 {% block content %}
-<div id="vorlage-editor-app">
+<div class="container">
     <div class="actions-header">
-        <h1>{[ pageTitle ]}</h1>
-        <div class="button-group">
-            <a href="{{ url_for('vorlagen.verwalten') }}" class="button secondary">Abbrechen</a>
-            <button @click="handleSave" class="button">Vorlage Speichern</button>
-        </div>
+        <h1>{{ 'Kontakt bearbeiten' if kontakt else 'Neuer Kontakt' }}</h1>
     </div>
 
-    <div class="form-group">
-        <label for="vorlage-name">Name der Vorlage:</label>
-        <input type="text" id="vorlage-name" v-model="vorlage.name" class="input-field" :disabled="vorlage.is_standard">
-        <small v-if="vorlage.is_standard" style="color: var(--text-secondary);">Standardvorlagen können nicht direkt
-            geändert werden. Änderungen werden als neue Vorlage gespeichert.</small>
-    </div>
+    <form id="kontaktForm" method="POST" action="{{ action_url }}">
+        <div class="form-container">
+            <h2>Kontaktdaten (Vorlage: {{ vorlage_for_json|fromjson.name }})</h2>
 
-    <div class="add-group-bar">
-        <select v-model="selectedSuggestionCategory" class="input-field">
-            <option :value="null">Gruppe aus Vorschlag wählen...</option>
-            <option v-for="cat in suggestions.categories" :key="cat.name" :value="cat">{[ cat.name ]}</option>
-        </select>
-        <button @click="addGroupFromSuggestion" class="button">Hinzufügen</button>
-        <button @click="addEmptyGruppe" class="button secondary">Leere Gruppe</button>
-    </div>
-
-    <div class="view-switcher">
-        <button @click="viewMode = 'list'" :class="{ active: viewMode === 'list' }">Listenansicht</button>
-        <button @click="viewMode = 'tile'" :class="{ active: viewMode === 'tile' }">Kachelansicht</button>
-    </div>
-
-    <div v-if="viewMode === 'list'" id="group-list-container" class="list-view-container">
-        <div v-for="(gruppe, index) in vorlage.gruppen" :key="index" class="group-list-item">
-            <div class="list-item-header" @click="toggleGroupCollapse(index)">
-                <span class="drag-handle">☰</span>
-                <strong>{[ gruppe.name ]}</strong>
-                <div class="tile-actions">
-                    <button @click.stop="openGroupEditModal(index)" class="icon-btn edit" title="Gruppe bearbeiten">
-                        <img src="{{ url_for('static', filename='img/icon_edit.svg') }}" alt="Bearbeiten">
-                    </button>
-                </div>
-                <span :class="['toggle-icon', { collapsed: collapsedGroups[index] }]">▼</span>
-            </div>
-            <div v-show="!collapsedGroups[index]" class="property-list-container" :data-group-index="index">
-                <div v-if="gruppe.eigenschaften.length > 0">
-                    <div v-for="(eigenschaft, pIndex) in gruppe.eigenschaften" :key="pIndex" class="property-list-item">
-                        <span class="drag-handle">☰</span>
-                        <span class="property-name">{[ eigenschaft.name ]}</span>
-                        <span class="property-type-badge">{[ eigenschaft.datentyp ]}</span>
+            <div id="kontakt_attributes" class="kontakt-attributes">
+                {% for key, value in kontakt_daten_for_json|fromjson.items() %}
+                {% if key != 'Verknüpfungen' %}
+                <div class="attribute-field">
+                    <label>{{ key }}</label>
+                    <div class="input-group">
+                        <input type="text" name="attribute_key_{{ key }}" value="{{ key }}"
+                            class="attribute-key-input input-field attribute-key-fixed-width" readonly>
+                        <input type="text" name="attribute_value_{{ key }}" value="{{ value }}" placeholder="Wert"
+                            class="attribute-input input-field">
+                        <button type="button" class="delete-attribute icon-btn delete"
+                            onclick="this.closest('.attribute-field').remove();">
+                            <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Entfernen">
+                        </button>
                     </div>
                 </div>
-                <div v-else class="empty-properties-info">
-                    Diese Gruppe hat noch keine Eigenschaften.
-                </div>
+                {% endif %}
+                {% endfor %}
             </div>
-        </div>
-    </div>
 
-    <div v-if="activeModal === 'groupEdit'" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Gruppe bearbeiten</h2>
-                <button @click="closeModal" class="modal-close-btn" title="Schließen">&times;</button>
-            </div>
-            <div class="modal-body" v-if="editedGroup">
-                <div class="form-group">
-                    <label>Gruppenname:</label>
-                    <input type="text" v-model="editedGroup.name" class="input-field">
-                </div>
-                <hr>
-                <h4>Eigenschaften:</h4>
-                <div v-for="(prop, pIndex) in editedGroup.eigenschaften" :key="pIndex" class="modal-property-row">
-                    <input type="text" v-model="prop.name" placeholder="Name" class="input-field">
-                    <select v-model="prop.datentyp" class="input-field">
-                        <option>Text</option>
-                        <option>Auswahl</option>
-                        <option>Datum</option>
-                        <option>Verknüpfung</option>
-                    </select>
-                    <input type="text" v-model="prop.optionen" placeholder="Optionen (kommagetrennt)"
-                        class="input-field">
-                    <button @click="removeEigenschaft(pIndex)" class="icon-btn delete" title="Eigenschaft entfernen">
-                        <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Löschen">
-                    </button>
-                </div>
-                <button @click="addEigenschaft" class="button secondary" style="margin-top: 1rem;">
-                    <img src="{{ url_for('static', filename='img/icon_plus.svg') }}" alt="Hinzufügen">
-                    Eigenschaft hinzufügen
-                </button>
-            </div>
-            <div class="modal-actions">
-                <button @click="closeModal" class="button secondary">Abbrechen</button>
-                <button @click="saveGroup" class="button">Speichern</button>
-            </div>
-        </div>
-    </div>
+            <div id="verknuepfung_container" class="kontakt-section">
+                <h2>Verknüpfungen</h2>
+                <div class="attribute-group" id="verknuepfung-group">
+                    {% for verknuepfung in verknuepfungen %}
+                    <div class="attribute-field">
+                        <label>Verknüpfung</label>
+                        <div class="verknuepfung-select-container">
+                            <input type="hidden" name="verknuepfung_ids" value="{{ verknuepfung.id }}">
+                            <input type="text" class="verknuepfung-display-input input-field"
+                                value="{{ verknuepfung.vorname }} {{ verknuepfung.nachname }} ({% if verknuepfung.firma %}{{ verknuepfung.firma }}{% else %}ID:{{ verknuepfung.id }}{% endif %})"
+                                readonly>
+                            <button type="button" class="delete-attribute icon-btn delete"
+                                onclick="removeVerknuepfung(this)">
+                                <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Entfernen">
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
 
-    <div v-if="isSaveAsModalOpen" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Als neue Vorlage speichern</h2>
-                <button @click="isSaveAsModalOpen = false" class="modal-close-btn" title="Schließen">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>Du bearbeitest eine Standardvorlage. Deine Änderungen müssen als neue, benutzerdefinierte Vorlage
-                    gespeichert werden.</p>
-                <div class="form-group">
-                    <label for="new-vorlage-name">Name der neuen Vorlage:</label>
-                    <input type="text" id="new-vorlage-name" v-model="newVorlageName" class="input-field">
+                    <div class="attribute-field">
+                        <label for="new_verknuepfung_select">Kontakt verknüpfen</label>
+                        <input type="text" id="autocomplete-search-input" placeholder="Nach Kontakt suchen..."
+                            class="autocomplete-search-input-field">
+                        <select id="new_verknuepfung_select" class="autocomplete-select input-field"></select>
+                    </div>
+
                 </div>
             </div>
-            <div class="modal-actions">
-                <button @click="isSaveAsModalOpen = false" class="button secondary">Abbrechen</button>
-                <button @click="saveAsNewVorlage" class="button">Speichern</button>
-            </div>
+            <button type="button" id="addAttributeBtn" class="button add button-margin-top">
+                <img src="{{ url_for('static', filename='img/icon_plus.svg') }}" alt="Hinzufügen"> Attribut hinzufügen
+            </button>
         </div>
-    </div>
 
+        <div class="modal-actions">
+            <button type="submit" class="button">Speichern</button>
+            {% if kontakt %}
+            <a href="{{ url_for('kontakte.loeschen', kontakt_id=kontakt.id) }}" class="button danger"
+                onclick="return confirm('Sicher?');">Kontakt löschen</a>
+            {% endif %}
+            <a href="{{ url_for('kontakte.auflisten') }}" class="button secondary">Abbrechen</a>
+        </div>
+    </form>
 </div>
 
-<script type="application/json" id="vorlage-data">{{ vorlage_data|safe }}</script>
-<script type="application/json" id="action-url-data">{{ action_url|tojson|safe }}</script>
-<script type="application/json" id="all-vorlagen-data">{{ all_vorlagen_data|safe }}</script>
+
+<div id="selectOptionModal" class="modal-overlay modal-edit-options">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Optionen bearbeiten</h2>
+            <button type="button" onclick="closeModal()" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <h3 id="modal-key-title">Optionen für das Attribut</h3>
+            <ul id="modal-options-list" class="option-list">
+            </ul>
+            <div class="add-option-container">
+                <input type="text" id="newOptionInput" placeholder="Neue Option" class="input-field new-option-input">
+                <button type="button" id="addOptionBtn" class="button add">Hinzufügen</button>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" id="saveOptionsBtn" class="button">Speichern</button>
+        </div>
+
+    </div>
+</div>
+<script type="application/json" id="selection-options-data">{{ selection_options|tojson|safe }}</script>
+<script type="application/json" id="attribute-suggestions-data">{{ attribute_suggestions|tojson|safe }}</script>
+<script type="application/json" id="contact-id-data">{{ kontakt.id|tojson if kontakt else 'null' }}</script>
+<script>
+    // Globale Funktionen für das HTML
+    window.removeVerknuepfung = function (button) {
+        button.closest('.attribute-field').remove();
+    };
+    window.closeModal = function () {
+        document.getElementById("selectOptionModal").style.display = "none";
+    };
+</script>
+
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-<script src="{{ url_for('static', filename='js/vorlage_editor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/kontakt_editor.js') }}"></script>
 {% endblock %}

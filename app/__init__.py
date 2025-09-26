@@ -1,36 +1,88 @@
 # app/__init__.py
 import os
+import json
+from typing import List, Dict, Any, Union
+
 from flask import Flask
 from flask_migrate import Migrate
 from .models import db
 
-def create_app():
+
+def get_attribute_suggestions() -> Dict[str, Any]:
+    """Läd die Attribut-Vorschläge aus der JSON-Datei."""
+    try:
+        # Pfad korrigiert relativ zur App-Basis
+        filepath = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "data",
+            "attribute_suggestions.json",
+        )
+        with open(filepath, "r", encoding="utf-8") as file:
+            return json.load(file)
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError as err:
+        print(f"Fehler beim Laden von data/attribute_suggestions.json: {err}")
+        return {}
+
+
+def get_selection_options() -> Dict[str, List[str]]:
+    """Läd die globalen Auswahloptionen aus der JSON-Datei."""
+    try:
+        # Pfad korrigiert relativ zur App-Basis
+        filepath = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "data",
+            "selection_options.json",
+        )
+        with open(filepath, "r", encoding="utf-8") as file:
+            # Die Optionen werden in einem Dictionary bereitgestellt, das nach Attributname mappt
+            options_list = json.load(file).get("options", [])
+            options_dict = {
+                item["name"]: [val.strip() for val in item["values"].split(",")]
+                for item in options_list
+            }
+            return options_dict
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError as err:
+        print(f"Fehler beim Laden von data/selection_options.json: {err}")
+        return {}
+
+
+def create_app() -> Flask:
     """Erstellt und konfiguriert die Flask-Anwendung."""
-    app = Flask(__name__,
-                static_folder="../static",
-                template_folder="../templates",
-                instance_relative_config=True)
+    app = Flask(
+        __name__,
+        static_folder="../static",
+        template_folder="../templates",
+        instance_relative_config=True,
+    )
 
     # Konfiguration
     basedir = os.path.abspath(os.path.dirname(__file__))
-    instance_path = os.path.join(basedir, '..', 'instance')
+    instance_path = os.path.join(basedir, "..", "instance")
     os.makedirs(instance_path, exist_ok=True)
-    
-    upload_path = os.path.join(basedir, '..', 'upload_files')
+
+    upload_path = os.path.join(basedir, "..", "upload_files")
     os.makedirs(upload_path, exist_ok=True)
 
     app.config["SECRET_KEY"] = "dein-super-geheimer-schluessel-hier"
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(instance_path, 'kundenverwaltung.db')}"
+    db_uri = f"sqlite:///{os.path.join(instance_path, 'kundenverwaltung.db')}"
+    app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["UPLOAD_FOLDER"] = upload_path
-    
+
     # Datenbank und Migration initialisieren
     db.init_app(app)
     Migrate(app, db)
 
     with app.app_context():
-        # Blueprints (Routen-Gruppen) registrieren
+        # Blueprints (Routen-Gruppen) registrieren (C0415 Import inside function)
         from .routes import main, vorlagen, kontakte, api, import_export
+
         app.register_blueprint(main.bp)
         app.register_blueprint(vorlagen.bp)
         app.register_blueprint(kontakte.bp)

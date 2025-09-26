@@ -4,9 +4,11 @@ import re
 import subprocess
 import tempfile
 import shutil
+import sys
+from typing import Dict, Any, List, Union
 
 
-def _search_field(pattern, text):
+def _search_field(pattern: str, text: str) -> str:
     """
     Hilfsfunktion für die Regex-Suche. Verwendet re.DOTALL, um über Zeilenumbrüche
     zu suchen, und nimmt nur die erste Zeile des Treffers.
@@ -20,64 +22,145 @@ def _search_field(pattern, text):
     return ""
 
 
-def _parse_message_text(text):
-    """Parst den reinen Text aus einer .msg-Datei."""
+def _parse_message_text(text: str) -> Dict[str, Any]:
+    """
+    Parst den reinen Text aus einer .msg-Datei, indem alle 'Feldname: Wert'-Paare
+    im Kopfbereich der Datei automatisch extrahiert werden (generisches Parsen).
+    """
     data = {}
+    key_value_pairs = {}
+    current_key = None
 
-    # Extrahiere die Felder mit Regex
-    data["Vorname"] = _search_field(r"First Name:\s*(.*)", text)
-    data["Nachname"] = _search_field(r"Last Name:\s*(.*)", text)
-    data["Anrede"] = _search_field(r"Full Name:\s*(Herr|Frau)", text)
-    data["Position"] = _search_field(r"Job Title:\s*(.*)", text)
-    data["Firma"] = _search_field(r"Company:\s*(.*)", text)
-    data["Telefon (geschäftlich)"] = _search_field(r"Business:\s*([+\d\s()/.-]+)", text)
-    data["Telefon (privat)"] = _search_field(r"Home:\s*([+\d\s()/.-]+)", text)
-    data["Mobilnummer"] = _search_field(r"Mobile:\s*([+\d\s()/.-]+)", text)
-    data["Faxnummer"] = _search_field(r"Fax:\s*([+\d\s()/.-]+)", text)
-    data["E-Mail"] = _search_field(r"Email:\s*([\w\.-]+@[\w\.-]+)", text)
+    # Status-Variablen für das Parsen von mehrzeiligen Werten (speziell Adresse)
+    in_multi_line_field = False
 
-    # Adress-Parsing
-    business_address = _search_field(r"Business Address:\s*(.*)", text)
-    if business_address:
-        addr_match = re.match(r"(.+),\s*(\d{4,5})\s+(.+)", business_address)
-        if addr_match:
-            data["Straße"] = addr_match.group(1).strip()
-            data["Postleitzahl"] = addr_match.group(2).strip()
-            data["Ort"] = addr_match.group(3).strip()
-        else:
-            data["Straße"] = business_address
+    for line in text.splitlines():
+        match = re.match(r"^(.+?):\s*(.*)", line)
 
-    return {k: v for k, v in data.items() if v}  # Nur gefüllte Felder zurückgeben
+        if match:
+            # Ein neuer Key: Value-Paar beginnt
+            key = match.group(1).strip()
+            value = match.group(2).strip()
+
+            # Wenn der aktuelle Key die Adresse war, beende den Adressblock
+            if (
+                current_key == "Business Address"
+                and "Address" not in key
+                and key != "Email Display As"
+                and key != "Full Name"
+            ):
+                in_multi_line_field = False
+
+            if key == "Business Address":
+                # Starte einen mehrzeiligen Adressblock
+                current_key = key
+                # Fange den Rest der Zeile ab
+                key_value_pairs[key] = value + "\n"
+                in_multi_line_field = True
+            else:
+                current_key = key
+                key_value_pairs[key] = value
+                in_multi_line_field = False
+
+        elif (
+            in_multi_line_field
+            and current_key == "Business Address"
+            and line.strip()
+            and not line.strip().startswith("-")
+        ):
+            # Setze den Wert in der nächsten Zeile fort (nur für die Adresse)
+            key_value_pairs[current_key] += line.strip() + "\n"
+
+    # 1. Adress-Parsing (strukturieren)
+    business_address_raw = key_value_pairs.pop("Business Address", "").strip()
+
+    if business_address_raw:
+        address_parts = [
+            p.strip() for p in business_address_raw.splitlines() if p.strip()
+        ]
+
+        if len(address_parts) > 0:
+            data["Straße"] = address_parts[0]
+
+        if len(address_parts) > 1:
+            # Suche nach Muster: PLZ Ort
+            plz_ort_line = address_parts[1]
+            plz_ort_match = re.match(r"(\d{4,5})\s+(.+)", plz_ort_line)
+            if plz_ort_match:
+                data["Postleitzahl"] = plz_ort_match.group(1).strip()
+                data["Ort"] = plz_ort_match.group(2).strip()
+
+    # 2. Finales Mapping/Bereinigen aller Key-Value-Paare
+    for key, value in key_value_pairs.items():
+        key = key.strip()
+
+        # Ignoriere Metadaten/Trenner oder leere Werte
+        if key.startswith("-") or not value:
+            continue
+
+        # Umbenennung für Konsistenz mit deutschen Vorlagen-Attributen
+        if key == "Job Title":
+            key = "Position"
+        if key == "Company":
+            key = "Firma"
+        if key == "First Name":
+            key = "Vorname"
+        if key == "Last Name":
+            key = "Nachname"
+        if key == "Business":
+            key = "Telefon (geschäftlich)"
+        if key == "Home":
+            key = "Telefon (privat)"
+        if key == "Mobile":
+            key = "Mobilnummer"
+        if key == "Business Fax":
+            key = "Faxnummer"
+        if key == "Email":
+            key = "E-Mail"
+
+        # Ignoriere redundante/unbrauchbare Felder
+        if key in ["Email Display As", "Full Name"]:
+            continue
+
+        # Füge alle anderen Felder hinzu. Adressfelder wurden durch 1. strukturiert.
+        if key not in data:
+            data[key] = value
+
+    return {k: v for k, v in data.items() if v}
 
 
-def parse_msg_file(file_path):
+def parse_msg_file(file_path: str) -> Union[List[Dict[str, Any]], Dict[str, str]]:
     """
     Extrahiert den Inhalt einer .msg-Datei, parst ihn und gibt die strukturierten Daten zurück.
+
+    Verwendet temporäre Ordner für eine saubere Extraktion und umgeht Umgebungsprobleme
+    durch die explizite Nutzung des aktuellen Python-Interpreters (sys.executable).
     """
-    # Das ist der TEMP-Ordner im Flask-Kontext
+    # Erstelle einen temporären Ordner (sauberer als ein Cache im Projektordner)
     temp_dir = tempfile.mkdtemp(prefix="msg_extract_")
 
     try:
         # Führe das extract_msg-Tool aus
         subprocess.run(
-            ["python", "-m", "extract_msg", "--out", temp_dir, file_path],
+            [sys.executable, "-m", "extract_msg", "--out", temp_dir, file_path],
             capture_output=True,
             text=True,
             check=False,
+            encoding="latin-1",
         )
 
         found_txt_path = None
         # Dateien, die interne Daten enthalten und ignoriert werden sollen
         ignored_files = ["attachments.txt", "rtf-body.txt", "body.html", "message.html"]
 
-        # FIX: Verwende os.walk, um in allen Unterordnern zu suchen (wie im erfolgreichen Test!)
+        # ROBUSDE SUCHE: Finde die erste brauchbare TXT-Datei im Temp-Ordner.
         for root, _, files in os.walk(temp_dir):
             for file in files:
                 # Prüfe, ob es eine Textdatei ist und nicht auf der Ignorierliste steht
                 if file.lower().endswith(".txt") and file.lower() not in ignored_files:
                     full_path = os.path.join(root, file)
                     found_txt_path = full_path
-                    break  # Wir nehmen die erste gefundene (message.txt oder Kontaktname.txt)
+                    break
             if found_txt_path:
                 break
 
@@ -87,11 +170,12 @@ def parse_msg_file(file_path):
             }
 
         # Verwende den gefundenen Pfad
-        with open(found_txt_path, "r", encoding="utf-8", errors="ignore") as f:
-            text = f.read()
+        with open(found_txt_path, "r", encoding="utf-8", errors="ignore") as file:
+            text = file.read()
 
+        # Rückgabe muss eine Liste von Kontakten sein, um konsistent mit anderen Importern zu sein
         return [_parse_message_text(text)]
 
     finally:
-        # Löscht den temporären Ordner IMMER, wenn die Funktion beendet ist (das ist wichtig für die Sicherheit)
+        # Löscht den temporären Ordner IMMER, wenn die Funktion beendet ist (WICHTIG!)
         shutil.rmtree(temp_dir)

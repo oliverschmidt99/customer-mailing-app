@@ -92,3 +92,175 @@ tr.selected {
     border-right: 1px solid var(--border-color);
     margin-right: 1rem;
 }
+
+/* NEUE STILE FÜR KONTAKT-EDITOR */
+
+.attribute-field {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--card-bg);
+}
+
+.attribute-field label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.input-group, .select-group, .verknuepfung-select-container {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.select-group select, 
+.verknuepfung-select-container input, 
+.autocomplete-search-input-field {
+    flex-grow: 1;
+    padding: 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.attribute-key-fixed-width {
+    /* Entspricht dem früheren style="width: 150px;" */
+    width: 150px;
+    flex-shrink: 0;
+}
+
+.button-margin-top {
+    /* Entspricht dem früheren style="margin-top: 1rem;" */
+    margin-top: 1rem;
+}
+
+/* Modal Styling für Select-Optionen */
+.modal-edit-options {
+    /* Setzt das Modal auf Flex, da es in der HTML-Datei jetzt .modal-overlay verwendet */
+    display: flex !important; 
+    justify-content: center;
+    align-items: center; 
+}
+
+.modal-key-title-style {
+    /* Entspricht dem früheren style="margin-top: 0;" */
+    margin-top: 0;
+}
+
+.option-list {
+    list-style: none;
+    padding: 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.option-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px dotted var(--border-color);
+}
+
+.add-option-container {
+    /* Entspricht dem früheren style="display: flex; gap: 0.5rem; margin-top: 1rem;" */
+    display: flex; 
+    gap: 0.5rem; 
+    margin-top: 1rem;
+}
+
+.new-option-input {
+    /* Entspricht dem früheren style="flex-grow: 1;" */
+    flex-grow: 1;
+}
+
+
+.bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-right: 1rem;
+    border-right: 1px solid var(--border-color);
+    margin-right: 1rem;
+}
+
+/* NEUE STILE FÜR KONTAKT-EDITOR */
+
+.attribute-field {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--card-bg);
+}
+
+.attribute-field label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.input-group, .select-group, .verknuepfung-select-container {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.select-group select, 
+.verknuepfung-select-container input, 
+.autocomplete-search-input-field {
+    flex-grow: 1;
+    padding: 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.attribute-key-fixed-width {
+    width: 150px;
+    flex-shrink: 0;
+}
+
+.button-margin-top {
+    margin-top: 1rem;
+}
+
+/* Modal Styling für Select-Optionen */
+.modal-edit-options {
+    /* Setzt das Modal auf Flex, da es in der HTML-Datei jetzt .modal-overlay verwendet */
+    display: none !important; /* Initial verstecken, da es von JS gezeigt wird */
+    justify-content: center;
+    align-items: center; 
+}
+
+/* FIX: Behebt den margin-top: 0 für den h3 im Modal Body */
+.modal-content .modal-body h3 {
+    margin-top: 0;
+}
+
+.option-list {
+    list-style: none;
+    padding: 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.option-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px dotted var(--border-color);
+}
+
+.add-option-container {
+    display: flex; 
+    gap: 0.5rem; 
+    margin-top: 1rem;
+}
+
+.new-option-input {
+    flex-grow: 1;
+}
