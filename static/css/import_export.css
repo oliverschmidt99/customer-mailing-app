@@ -7,7 +7,7 @@
     display: none; 
     position: absolute; 
     background-color: var(--card-bg); 
-    min-width: 220px; /* Breite angepasst für längere Texte */
+    min-width: 220px;
     box-shadow: 0px 8px 16px 0px var(--shadow-color); 
     z-index: 1; 
     border-radius: 6px; 
@@ -61,7 +61,6 @@
     margin-top: 1rem;
 }
 
-/* NEUE STILE FÜR DEN FORTSCHRITTSBALKEN */
 .progress-container {
     width: 100%;
     background-color: var(--border-color);
@@ -96,4 +95,32 @@
 
 html[data-theme='dark'] .progress-text {
     color: var(--bg-main);
+}
+
+.mapping-search-container {
+    margin-bottom: 1.5rem;
+}
+
+.template-field-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.template-field-cell .group-label {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+}
+
+.no-results-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
+.step-indicator {
+    float: right;
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    font-weight: 500;
 }

@@ -5,7 +5,7 @@
 {% block head_styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/kontakte.css', v='2.0') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/filter.css', v='1.5') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/import_export.css', v='1.1') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/import_export.css', v='1.3') }}">
 {% endblock %}
 
 {% block content %}
@@ -236,36 +236,81 @@
                 </div>
 
                 <div v-if="importStep === 2 && importTargetVorlage">
-                    <p>Bitte ordne die Spalten aus deiner Datei den Feldern der Vorlage <strong>"{[
-                            importTargetVorlage.name ]}"</strong> zu.</p>
-                    <div class="mapping-grid">
-                        <div class="mapping-header">Spalte in Datei</div>
-                        <div class="mapping-header">Feld in Vorlage</div>
-                        <template v-for="header in importData.headers" :key="header">
-                            <div><strong>{[ header ]}</strong></div>
-                            <div>
-                                <select v-model="importMappings[header]" class="input-field">
-                                    <option value="">-- Ignorieren --</option>
-                                    <optgroup v-for="gruppe in importTargetVorlage.gruppen" :key="gruppe.id"
-                                        :label="gruppe.name">
-                                        <option v-for="prop in gruppe.eigenschaften" :key="prop.id" :value="prop.name">
-                                            {[ prop.name ]} {[ (usedTemplateProperties.has(prop.name) &amp;&amp;
-                                            importMappings[header] !== prop.name) ? '⛓️‍💥' : '' ]}
+
+                    <div v-if="!isFinalMappingStep">
+                        <p>
+                            Bitte ordne die Felder für die Gruppe <strong>"{[ currentMappingGroup.name ]}"</strong> zu.
+                            <span class="step-indicator">Schritt {[ mappingStep + 1 ]} von {[ totalMappingSteps
+                                ]}</span>
+                        </p>
+                        <div class="mapping-grid">
+                            <div class="mapping-header">Feld in Vorlage</div>
+                            <div class="mapping-header">Spalte aus Datei</div>
+                            <template v-for="prop in currentMappingGroup.eigenschaften" :key="prop.id">
+                                <div class="template-field-cell">
+                                    <strong>{[ prop.name ]}</strong>
+                                </div>
+                                <div>
+                                    <select :ref="el => { tomSelectRefs[prop.name] = el }"
+                                        v-model="importMappings[prop.name]">
+                                        <option value="">-- Ignorieren --</option>
+                                        <option v-for="header in importData.headers" :key="header" :value="header">
+                                            {[ header ]}
                                         </option>
-                                    </optgroup>
-                                </select>
-                            </div>
-                        </template>
+                                    </select>
+                                </div>
+                            </template>
+                        </div>
                     </div>
+
+                    <div v-if="isFinalMappingStep">
+                        <p>
+                            Bitte überprüfe die gesamte Zuordnung vor dem Abschluss.
+                            <span class="step-indicator">Schritt {[ mappingStep + 1 ]} von {[ totalMappingSteps
+                                ]}</span>
+                        </p>
+                        <div class="form-group mapping-search-container">
+                            <input type="text" v-model="mappingSearchQuery" placeholder="Vorlagen-Feld suchen..."
+                                class="input-field">
+                        </div>
+                        <div class="mapping-grid">
+                            <div class="mapping-header">Feld in Vorlage</div>
+                            <div class="mapping-header">Spalte aus Datei</div>
+                            <template v-for="gruppe in importTargetVorlage.gruppen" :key="gruppe.id">
+                                <template v-for="prop in gruppe.eigenschaften" :key="prop.id">
+                                    <div v-if="filteredTemplateProperties.some(p => p.id === prop.id)"
+                                        class="template-field-cell">
+                                        <span class="group-label">{[ gruppe.name ]}</span>
+                                        <strong>{[ prop.name ]}</strong>
+                                    </div>
+                                    <div v-if="filteredTemplateProperties.some(p => p.id === prop.id)">
+                                        <select :ref="el => { tomSelectRefs[prop.name] = el }"
+                                            v-model="importMappings[prop.name]">
+                                            <option value="">-- Ignorieren --</option>
+                                            <option v-for="header in importData.headers" :key="header" :value="header">
+                                                {[ header ]}
+                                            </option>
+                                        </select>
+                                    </div>
+                                </template>
+                            </template>
+                            <div v-if="filteredTemplateProperties.length === 0" class="no-results-message">
+                                Keine Felder für "{[ mappingSearchQuery ]}" gefunden.
+                            </div>
+                        </div>
+                    </div>
+
                     <div v-if="importError" class="alert-danger error-margin-top">{[ importError ]}</div>
                 </div>
             </div>
             <div class="modal-actions">
                 <button type="button" @click="closeImportModal" class="button secondary">Abbrechen</button>
-                <button type="button" v-if="importStep === 2" @click="importStep = 1"
+                <button type="button" v-if="importStep === 2" @click="prevMappingStep" :disabled="mappingStep === 0"
                     class="button secondary">Zurück</button>
-                <button type="button" v-if="importStep === 2" @click="finalizeImport" class="button">Import
-                    abschließen</button>
+                <button type="button" v-if="importStep === 2 && !isFinalMappingStep" @click="nextMappingStep"
+                    class="button">Weiter</button>
+                <button type="button" v-if="importStep === 2 && isFinalMappingStep" @click="finalizeImport"
+                    class="button">Import abschließen</button>
             </div>
         </div>
     </div>
@@ -300,5 +345,6 @@
 {% block scripts %}
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script src="{{ url_for('static', filename='js/kontakte_liste.js') }}"></script>
 {% endblock %}

@@ -1,14 +1,12 @@
 document.addEventListener("DOMContentLoaded", () => {
   const appRoot = document.getElementById("kontakte-app");
-  if (!appRoot) {
-    return;
-  }
+  if (!appRoot) return;
 
-  const { createApp, ref, computed, watch, nextTick } = Vue;
+  const { createApp, ref, computed, watch, nextTick, onBeforeUnmount } = Vue;
 
   const app = createApp({
     setup() {
-      // --- Kompletter State ---
+      // --- State ---
       const vorlagen = ref(
         JSON.parse(
           document.getElementById("vorlagen-for-json-data").textContent
@@ -22,28 +20,20 @@ document.addEventListener("DOMContentLoaded", () => {
       const editOrderMode = ref(false);
       const sortableGroupInstance = ref(null);
       const sortableItemInstances = ref({});
-
-      // --- Status für Sortierung und Auswahl ---
       const sortColumn = ref(null);
       const sortDirection = ref("asc");
       const selectedKontakte = ref(new Set());
-
-      // --- Modals ---
       const isAddModalOpen = ref(false);
       const isImportModalOpen = ref(false);
       const isMultiSelectModalOpen = ref(false);
-
       const newContactData = ref({});
       const addModalVorlageId = ref(activeVorlageId.value);
       const verknuepfungsOptionen = ref({});
-
       const multiSelectEditData = ref({
         eigenschaft: null,
         kontakt: null,
         selectedValues: [],
       });
-
-      // --- Import-Status ---
       const importStep = ref(1);
       const importTargetVorlageId = ref(null);
       const importData = ref({});
@@ -52,11 +42,37 @@ document.addEventListener("DOMContentLoaded", () => {
       const isUploading = ref(false);
       const uploadProgress = ref(0);
       const uploadStatus = ref("");
+      const mappingSearchQuery = ref("");
+      const mappingStep = ref(0);
+      const tomSelectInstances = {};
+      const tomSelectRefs = ref({});
 
       // --- Computed Properties ---
       const activeVorlage = computed(() => {
         if (!activeVorlageId.value) return null;
         return vorlagen.value.find((v) => v.id === activeVorlageId.value);
+      });
+
+      const importTargetVorlage = computed(() => {
+        if (!importTargetVorlageId.value) return null;
+        return vorlagen.value.find((v) => v.id === importTargetVorlageId.value);
+      });
+
+      const allTemplateProperties = computed(() => {
+        if (!importTargetVorlage.value) return [];
+        return importTargetVorlage.value.gruppen.flatMap(
+          (g) => g.eigenschaften
+        );
+      });
+
+      const filteredTemplateProperties = computed(() => {
+        if (!mappingSearchQuery.value) {
+          return allTemplateProperties.value;
+        }
+        const query = mappingSearchQuery.value.toLowerCase();
+        return allTemplateProperties.value.filter((prop) =>
+          prop.name.toLowerCase().includes(query)
+        );
       });
 
       const sortedKontakte = computed(() => {
@@ -125,14 +141,31 @@ document.addEventListener("DOMContentLoaded", () => {
           .filter((e) => filterState.value[e.name]);
       });
 
-      const importTargetVorlage = computed(() => {
-        if (!importTargetVorlageId.value) return null;
-        return vorlagen.value.find((v) => v.id === importTargetVorlageId.value);
-      });
-
       const usedTemplateProperties = computed(() => {
         return new Set(Object.values(importMappings.value).filter(Boolean));
       });
+
+      const totalMappingSteps = computed(() =>
+        importTargetVorlage.value
+          ? importTargetVorlage.value.gruppen.length + 1
+          : 1
+      );
+
+      const currentMappingGroup = computed(() => {
+        if (
+          !importTargetVorlage.value ||
+          mappingStep.value >= importTargetVorlage.value.gruppen.length
+        ) {
+          return null;
+        }
+        return importTargetVorlage.value.gruppen[mappingStep.value];
+      });
+
+      const isFinalMappingStep = computed(() =>
+        importTargetVorlage.value
+          ? mappingStep.value === importTargetVorlage.value.gruppen.length
+          : false
+      );
 
       // --- Watchers ---
       watch(activeVorlageId, () => {
@@ -150,41 +183,126 @@ document.addEventListener("DOMContentLoaded", () => {
                 newFilterState[e.name] = true;
               });
             filterState.value = newFilterState;
-
-            verknuepfungsOptionen.value = {};
-            const optionPromises = [];
-            for (const gruppe of newVorlage.gruppen) {
-              for (const eigenschaft of gruppe.eigenschaften) {
-                if (
-                  eigenschaft.datentyp === "Verknüpfung" &&
-                  eigenschaft.optionen.startsWith("vorlage_id:")
-                ) {
-                  const linkedVorlageId = eigenschaft.optionen.split(":")[1];
-                  const promise = fetch(
-                    `/api/kontakte-by-vorlage/${linkedVorlageId}`
-                  )
-                    .then((response) => (response.ok ? response.json() : []))
-                    .then((data) => {
-                      verknuepfungsOptionen.value[eigenschaft.id] = data;
-                    })
-                    .catch((error) => {
-                      console.error(
-                        "Fehler beim Laden der Verknüpfungs-Optionen:",
-                        error
-                      );
-                      verknuepfungsOptionen.value[eigenschaft.id] = [];
-                    });
-                  optionPromises.push(promise);
-                }
-              }
-            }
-            await Promise.all(optionPromises);
           }
         },
         { immediate: true }
       );
 
+      watch([currentMappingGroup, isFinalMappingStep], async () => {
+        tomSelectRefs.value = {};
+        await nextTick();
+        initTomSelects();
+      });
+
+      watch(
+        importMappings,
+        (newMappings) => {
+          for (const propName in newMappings) {
+            if (
+              tomSelectInstances[propName] &&
+              tomSelectInstances[propName].getValue() !== newMappings[propName]
+            ) {
+              tomSelectInstances[propName].setValue(
+                newMappings[propName],
+                true
+              );
+            }
+          }
+        },
+        { deep: true }
+      );
+
       // --- Methoden ---
+      const initTomSelects = () => {
+        for (const key in tomSelectInstances) {
+          if (tomSelectInstances[key]) {
+            tomSelectInstances[key].destroy();
+            delete tomSelectInstances[key];
+          }
+        }
+
+        for (const propName in tomSelectRefs.value) {
+          const el = tomSelectRefs.value[propName];
+          if (el && !tomSelectInstances[propName]) {
+            tomSelectInstances[propName] = new TomSelect(el, {
+              create: false,
+              dropdownParent: "body",
+            });
+
+            tomSelectInstances[propName].on("change", (value) => {
+              importMappings.value[propName] = value;
+            });
+          }
+        }
+      };
+
+      const pollStatus = (taskId) => {
+        const interval = setInterval(async () => {
+          try {
+            const response = await fetch(`/import/status/${taskId}`);
+            const result = await response.json();
+
+            if (result.status === "processing") {
+              const percent = Math.round(
+                (result.progress / result.total) * 100
+              );
+              uploadProgress.value = percent;
+              uploadStatus.value = `Verarbeite Datei ${result.progress} von ${result.total}... ${percent}%`;
+            } else if (result.status === "complete") {
+              clearInterval(interval);
+              isUploading.value = false;
+              importData.value = result.data;
+
+              const newMappings = {};
+              allTemplateProperties.value.forEach((prop) => {
+                const matchingHeader = (result.data.headers || []).find(
+                  (h) => h.toLowerCase() === prop.name.toLowerCase()
+                );
+                newMappings[prop.name] = matchingHeader || "";
+              });
+              importMappings.value = newMappings;
+
+              importStep.value = 2;
+            }
+          } catch (error) {
+            clearInterval(interval);
+            isUploading.value = false;
+            importError.value =
+              "Fehler bei der Abfrage des Verarbeitungsstatus.";
+          }
+        }, 1000);
+      };
+
+      const finalizeImport = async () => {
+        const mappingsForBackend = {};
+        for (const templateProp in importMappings.value) {
+          const fileHeader = importMappings.value[templateProp];
+          if (fileHeader) {
+            mappingsForBackend[fileHeader] = templateProp;
+          }
+        }
+
+        try {
+          const response = await fetch("/import/finalize", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              vorlage_id: importTargetVorlageId.value,
+              mappings: mappingsForBackend,
+              original_data: importData.value.original_data,
+            }),
+          });
+          const result = await response.json();
+          if (result.success) {
+            window.location.href = result.redirect_url;
+          } else {
+            throw new Error(result.error);
+          }
+        } catch (error) {
+          importError.value = `Import fehlgeschlagen: ${error.message}`;
+        }
+      };
+
       const onGroupSort = (event) => {
         const movedItem = activeVorlage.value.gruppen.splice(
           event.oldIndex,
@@ -202,7 +320,6 @@ document.addEventListener("DOMContentLoaded", () => {
         editOrderMode.value = !editOrderMode.value;
 
         if (editOrderMode.value) {
-          // Modus wird aktiviert
           await nextTick();
           const groupEl = document.querySelector(".filter-body");
           if (groupEl) {
@@ -223,7 +340,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           });
         } else {
-          // Modus wird deaktiviert
           if (sortableGroupInstance.value)
             sortableGroupInstance.value.destroy();
           Object.values(sortableItemInstances.value).forEach((instance) =>
@@ -396,6 +512,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const openImportModal = () => {
         importStep.value = 1;
+        mappingStep.value = 0;
+        mappingSearchQuery.value = "";
         importData.value = {};
         importMappings.value = {};
         importError.value = "";
@@ -404,6 +522,20 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       const closeImportModal = () => (isImportModalOpen.value = false);
+
+      const nextMappingStep = () => {
+        if (mappingStep.value < totalMappingSteps.value - 1) {
+          mappingStep.value++;
+        }
+      };
+
+      const prevMappingStep = () => {
+        if (mappingStep.value > 0) {
+          mappingStep.value--;
+        } else {
+          importStep.value = 1;
+        }
+      };
 
       const handleFileUpload = (event) => {
         const files = event.target.files;
@@ -461,68 +593,6 @@ document.addEventListener("DOMContentLoaded", () => {
         xhr.send(formData);
       };
 
-      const pollStatus = (taskId) => {
-        const interval = setInterval(async () => {
-          try {
-            const response = await fetch(`/import/status/${taskId}`);
-            const result = await response.json();
-
-            if (result.status === "processing") {
-              const percentComplete = Math.round(
-                (result.progress / result.total) * 100
-              );
-              uploadProgress.value = percentComplete;
-              uploadStatus.value = `Verarbeite Datei ${result.progress} von ${result.total}... ${percentComplete}%`;
-            } else if (result.status === "complete") {
-              clearInterval(interval);
-              uploadProgress.value = 100;
-              uploadStatus.value = "Verarbeitung abgeschlossen!";
-              isUploading.value = false;
-
-              importData.value = result.data;
-              const allEigenschaften =
-                importTargetVorlage.value.gruppen.flatMap(
-                  (g) => g.eigenschaften
-                );
-              result.data.headers.forEach((h) => {
-                const matchingProp = allEigenschaften.find(
-                  (p) => p.name.toLowerCase() === h.toLowerCase()
-                );
-                importMappings.value[h] = matchingProp ? matchingProp.name : "";
-              });
-              importStep.value = 2;
-            }
-          } catch (error) {
-            clearInterval(interval);
-            isUploading.value = false;
-            importError.value =
-              "Fehler bei der Abfrage des Verarbeitungsstatus.";
-          }
-        }, 1000);
-      };
-
-      const finalizeImport = async () => {
-        try {
-          const response = await fetch("/import/finalize", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              vorlage_id: importTargetVorlageId.value,
-              mappings: importMappings.value,
-              original_data: importData.value.original_data,
-            }),
-          });
-          const result = await response.json();
-          if (result.success) {
-            window.location.href = result.redirect_url;
-          } else {
-            throw new Error(result.error);
-          }
-        } catch (error) {
-          importError.value = `Import fehlgeschlagen: ${error.message}`;
-        }
-      };
-
       const getExportUrl = (format) => {
         if (!activeVorlageId.value) return "#";
         return `/export/${activeVorlageId.value}/${format}`;
@@ -547,6 +617,12 @@ document.addEventListener("DOMContentLoaded", () => {
         updateField(kontakt, eigenschaft.name, newValue);
         isMultiSelectModalOpen.value = false;
       };
+
+      onBeforeUnmount(() => {
+        for (const key in tomSelectInstances) {
+          if (tomSelectInstances[key]) tomSelectInstances[key].destroy();
+        }
+      });
 
       return {
         vorlagen,
@@ -600,6 +676,15 @@ document.addEventListener("DOMContentLoaded", () => {
         multiSelectEditData,
         openMultiSelectModal,
         saveMultiSelect,
+        mappingSearchQuery,
+        filteredTemplateProperties,
+        mappingStep,
+        totalMappingSteps,
+        currentMappingGroup,
+        isFinalMappingStep,
+        nextMappingStep,
+        prevMappingStep,
+        tomSelectRefs,
       };
     },
   });
