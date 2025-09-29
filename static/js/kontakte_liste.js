@@ -190,12 +190,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       );
 
-      // --- KORREKTUR: Initialisiere Tom-Select, sobald Schritt 2 erreicht wird ---
       watch(importStep, async (newStep) => {
         if (newStep === 2) {
-          tomSelectRefs.value = {}; // Referenzen zurücksetzen
-          await nextTick(); // Warten, bis das DOM aktualisiert ist
-          initTomSelects(); // TomSelect initialisieren
+          tomSelectRefs.value = {};
+          await nextTick();
+          initTomSelects();
         }
       });
 

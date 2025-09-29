@@ -67,4 +67,4 @@ def setup_database(app_instance):
 
 if __name__ == "__main__":
     setup_database(app)
-    app.run(host="0.0.0.0", port=6060, debug=True)
+    app.run(host="0.0.0.0", port=6061, debug=True)

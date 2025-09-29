@@ -16,6 +16,9 @@ MARGIN_LEFT = 4.75
 H_SPACING = 0
 V_SPACING = 0
 
+# --- NEU: Absenderadresse ---
+SENDER_ADDRESS = "Rolf Janssen GmbH, Musterstraße 123, 26603 Aurich"
+
 
 def _get_formatted_name(daten):
     """
@@ -104,13 +107,26 @@ def generate_labels_pdf(kontakte):
     """
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.set_auto_page_break(auto=False, margin=0)
-    pdf.set_font("Arial", size=10)
     pdf.add_page()
 
     label_count = 0
     for kontakt in kontakte:
         daten = kontakt.get("daten", {})
 
+        # Position des aktuellen Etiketts berechnen
+        row = label_count % LABELS_PER_COL
+        col = label_count // LABELS_PER_COL
+        x = MARGIN_LEFT + col * (LABEL_WIDTH + H_SPACING)
+        y = MARGIN_TOP + row * (LABEL_HEIGHT + V_SPACING)
+
+        # --- Absenderzeile hinzufügen (kleinere Schrift) ---
+        pdf.set_font("Arial", size=7)
+        pdf.set_xy(x + 3, y + 2)  # Position etwas oberhalb der Hauptadresse
+        safe_sender = SENDER_ADDRESS.encode("latin-1", "replace").decode("latin-1")
+        pdf.cell(w=LABEL_WIDTH - 6, h=3, text=safe_sender, align="L")
+
+        # --- Hauptadresse (normale Schrift) ---
+        pdf.set_font("Arial", size=10)
         formatted_name = _get_formatted_name(daten)
         line1 = daten.get("Firmenname", "") or formatted_name
 
@@ -129,12 +145,8 @@ def generate_labels_pdf(kontakte):
 
         address_block = "\n".join(filter(None, [line1, line2, line3, line4]))
 
-        row = label_count % LABELS_PER_COL
-        col = (label_count // LABELS_PER_COL) % LABELS_PER_ROW
-        x = MARGIN_LEFT + col * (LABEL_WIDTH + H_SPACING)
-        y = MARGIN_TOP + row * (LABEL_HEIGHT + V_SPACING)
-
-        pdf.set_xy(x + 3, y + 5)
+        # Position für den Adressblock (etwas nach unten verschoben)
+        pdf.set_xy(x + 3, y + 7)
         safe_address_block = address_block.encode("latin-1", "replace").decode(
             "latin-1"
         )

@@ -1,0 +1,115 @@
+{
+  "name": "Kunde einfach",
+  "gruppen": [
+    {
+      "name": "Post-Art",
+      "eigenschaften": [
+        {
+          "name": "Post-Art",
+          "datentyp": "Auswahl",
+          "optionen": "Digital 💻, Post 📬, Kalender 📅, Persönlich 🤝",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Zustand",
+          "datentyp": "Auswahl",
+          "optionen": "Offen 📂, In Bearbeitung 🔧, Erledigt ✅, Abgelehnt ❌, Archiviert 📦, Aktiv 🚀, Inaktiv ⏸️",
+          "allow_multiselect": false
+        }
+      ]
+    },
+    {
+      "name": "Personendaten",
+      "eigenschaften": [
+        {
+          "name": "Anrede",
+          "datentyp": "Auswahl",
+          "optionen": "Herr, Frau, Familie, Firma, Team",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Titel",
+          "datentyp": "Auswahl",
+          "optionen": "B. A., B. Sc., B. Eng., LL. B., B. F. A., B. Mus., B. Ed., M. A., M. Sc., M. Eng., LL. M., M. F. A., M. Mus., M. Ed., MBA, M. Arch., Dipl.-Ing., Dipl.-Kfm., Dipl.-Kffr., Dipl.-Hdl., Dipl.-Päd., Mag., Lic., Dr. med., Dr. iur., Dr. rer. nat., Dr. phil., Dr. rer. pol., Dr. oec., Dr.-Ing., Ph.D., Prof., Prof. Dr.",
+          "allow_multiselect": true
+        },
+        {
+          "name": "Vorname",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Nachname",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        }
+      ]
+    },
+    {
+      "name": "Unternehmensdaten",
+      "eigenschaften": [
+        {
+          "name": "Firmenname",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Abteilung",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        }
+      ]
+    },
+    {
+      "name": "Adresse",
+      "eigenschaften": [
+        {
+          "name": "Straße",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Hausnummer",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Adresszusatz",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Postleitzahl",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Ort",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Bundesland",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Land",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        }
+      ]
+    }
+  ]
+}
