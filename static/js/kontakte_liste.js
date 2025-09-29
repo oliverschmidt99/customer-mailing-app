@@ -185,8 +185,19 @@ document.addEventListener("DOMContentLoaded", () => {
             filterState.value = newFilterState;
           }
         },
-        { immediate: true }
+        {
+          immediate: true,
+        }
       );
+
+      // --- KORREKTUR: Initialisiere Tom-Select, sobald Schritt 2 erreicht wird ---
+      watch(importStep, async (newStep) => {
+        if (newStep === 2) {
+          tomSelectRefs.value = {}; // Referenzen zurücksetzen
+          await nextTick(); // Warten, bis das DOM aktualisiert ist
+          initTomSelects(); // TomSelect initialisieren
+        }
+      });
 
       watch([currentMappingGroup, isFinalMappingStep], async () => {
         tomSelectRefs.value = {};
@@ -209,7 +220,30 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           }
         },
-        { deep: true }
+        {
+          deep: true,
+        }
+      );
+
+      watch(
+        addModalVorlage,
+        (newVorlage) => {
+          if (newVorlage) {
+            newVorlage.gruppen.forEach((g) => {
+              g.eigenschaften.forEach((e) => {
+                if (e.datentyp === "Auswahl" && e.allow_multiselect) {
+                  if (!newContactData.value[e.name]) {
+                    newContactData.value[e.name] = [];
+                  }
+                }
+              });
+            });
+          }
+        },
+        {
+          immediate: true,
+          deep: true,
+        }
       );
 
       // --- Methoden ---
@@ -285,7 +319,9 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
           const response = await fetch("/import/finalize", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+            },
             body: JSON.stringify({
               vorlage_id: importTargetVorlageId.value,
               mappings: mappingsForBackend,
@@ -405,8 +441,12 @@ document.addEventListener("DOMContentLoaded", () => {
           try {
             const response = await fetch("/api/kontakte/bulk-delete", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ ids: idsToDelete }),
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                ids: idsToDelete,
+              }),
             });
             const result = await response.json();
             if (result.success) {
@@ -459,8 +499,13 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
           const response = await fetch(`/api/kontakt/${kontakt.id}/update`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ field: fieldName, value: newValue }),
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              field: fieldName,
+              value: newValue,
+            }),
           });
           if (!response.ok) throw new Error("Update fehlgeschlagen");
           const result = await response.json();
@@ -486,7 +531,9 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
           const response = await fetch("/api/kontakt/neu", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+            },
             body: JSON.stringify({
               vorlage_id: addModalVorlageId.value,
               daten: newContactData.value,

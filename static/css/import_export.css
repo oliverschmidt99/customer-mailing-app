@@ -1,62 +1,72 @@
 /* static/css/import_export.css */
-.dropdown { 
-    position: relative; 
-    display: inline-block; 
+.dropdown {
+    position: relative;
+    display: inline-block;
 }
-.dropdown-content { 
-    display: none; 
-    position: absolute; 
-    background-color: var(--card-bg); 
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: var(--card-bg);
     min-width: 220px;
-    box-shadow: 0px 8px 16px 0px var(--shadow-color); 
-    z-index: 1; 
-    border-radius: 6px; 
+    box-shadow: 0px 8px 16px 0px var(--shadow-color);
+    z-index: 1;
+    border-radius: 6px;
     border: 1px solid var(--border-color);
     padding: 0.5rem 0;
 }
-.dropdown-content a { 
-    color: var(--text-primary); 
-    padding: 10px 16px; 
-    text-decoration: none; 
-    display: block; 
+
+.dropdown-content a {
+    color: var(--text-primary);
+    padding: 10px 16px;
+    text-decoration: none;
+    display: block;
     font-size: 0.9em;
 }
-.dropdown-content a:hover { 
-    background-color: var(--card-active-bg); 
+
+.dropdown-content a:hover {
+    background-color: var(--card-active-bg);
 }
-.dropdown:hover .dropdown-content { 
-    display: block; 
+
+.dropdown:hover .dropdown-content {
+    display: block;
 }
-.alert-danger { 
-    color: #dc3545; 
-    background-color: #f8d7da; 
-    border-color: #f5c6cb; 
-    padding: .75rem 1.25rem; 
-    margin-top: 1rem; 
-    border: 1px solid transparent; 
-    border-radius: .25rem; 
+
+.alert-danger {
+    color: #dc3545;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    padding: .75rem 1.25rem;
+    margin-top: 1rem;
+    border: 1px solid transparent;
+    border-radius: .25rem;
 }
-.mapping-grid { 
-    display: grid; 
-    grid-template-columns: 1fr 1fr; 
-    gap: 1rem; 
-    margin-top: 1rem; 
+
+.mapping-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
     padding-right: 1rem;
 }
-.mapping-header { 
-    font-weight: bold; 
-    border-bottom: 1px solid var(--border-color); 
-    padding-bottom: 0.5rem; 
+
+.mapping-header {
+    font-weight: bold;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
     position: sticky;
     top: 0;
     background-color: var(--bg-container);
 }
-.data-preview { 
-    margin-top: 1.5rem; 
+
+.data-preview {
+    margin-top: 1.5rem;
 }
-.data-preview table { 
-    font-size: 0.8em; 
+
+.data-preview table {
+    font-size: 0.8em;
 }
+
 .error-margin-top {
     margin-top: 1rem;
 }
@@ -90,7 +100,7 @@
     z-index: 2;
     color: white;
     font-weight: 500;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 html[data-theme='dark'] .progress-text {
@@ -123,4 +133,26 @@ html[data-theme='dark'] .progress-text {
     color: var(--text-secondary);
     font-size: 0.9em;
     font-weight: 500;
+}
+
+/* --- NEUE STILE FÜR TOM-SELECT BUGFIX --- */
+.ts-control {
+    background-color: var(--bg-main) !important;
+    border-color: var(--border-color) !important;
+}
+
+.ts-dropdown {
+    background-color: var(--bg-container);
+    border-color: var(--border-color);
+    z-index: 1050;
+    /* Stellt sicher, dass das Dropdown über anderen Elementen liegt */
+}
+
+.ts-dropdown .active {
+    background-color: var(--accent-color) !important;
+    color: white !important;
+}
+
+html[data-theme='dark'] .ts-dropdown .active {
+    color: var(--bg-main) !important;
 }
