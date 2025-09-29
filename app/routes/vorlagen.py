@@ -45,7 +45,12 @@ def editor():
                 {
                     "name": g.name,
                     "eigenschaften": [
-                        {"name": e.name, "datentyp": e.datentyp, "optionen": e.optionen}
+                        {
+                            "name": e.name,
+                            "datentyp": e.datentyp,
+                            "optionen": e.optionen,
+                            "allow_multiselect": e.allow_multiselect,  # Hinzugefügt
+                        }
                         for e in g.eigenschaften
                     ],
                 }
@@ -100,7 +105,9 @@ def speichern(vorlage_id=None):
 
         vorlage.name = data["name"]
 
-        vorlage.gruppen = []
+        # Alte Gruppen und Eigenschaften löschen, um sie neu zu erstellen
+        for gruppe in vorlage.gruppen:
+            db.session.delete(gruppe)
         db.session.flush()
 
     else:
@@ -118,6 +125,8 @@ def speichern(vorlage_id=None):
                 datentyp=eigenschaft_data["datentyp"],
                 optionen=eigenschaft_data.get("optionen", ""),
                 gruppe_id=gruppe.id,
+                # Speichert den neuen Wert für Mehrfachauswahl
+                allow_multiselect=eigenschaft_data.get("allow_multiselect", False),
             )
             db.session.add(eigenschaft)
 
@@ -130,7 +139,25 @@ def speichern(vorlage_id=None):
 
             filename = f"user_{secure_filename(vorlage.name).lower()}.json"
             filepath = os.path.join(user_vorlagen_path, filename)
-            json_data = {"name": vorlage.name, "gruppen": data.get("gruppen", [])}
+            # JSON-Daten für den Export anpassen, um das neue Feld einzuschließen
+            json_data = {
+                "name": vorlage.name,
+                "gruppen": [
+                    {
+                        "name": g["name"],
+                        "eigenschaften": [
+                            {
+                                "name": e["name"],
+                                "datentyp": e["datentyp"],
+                                "optionen": e.get("optionen", ""),
+                                "allow_multiselect": e.get("allow_multiselect", False),
+                            }
+                            for e in g.get("eigenschaften", [])
+                        ],
+                    }
+                    for g in data.get("gruppen", [])
+                ],
+            }
 
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(json_data, f, ensure_ascii=False, indent=2)

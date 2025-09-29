@@ -174,3 +174,91 @@ tr.selected {
 .new-option-input {
     flex-grow: 1;
 }
+
+/* ÜBERARBEITETE STILE für das "Neuen Kontakt"-Modal */
+.modal-form-columns {
+    display: grid;
+    /* Erstellt 2 Spalten, wenn genug Platz ist, sonst nur 1 */
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    padding: 0.25rem;
+}
+
+.form-group-box {
+    /* margin-bottom wird durch 'gap' im Grid-Container ersetzt */
+    margin-bottom: 0;
+    padding: 1.2rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--bg-main);
+}
+
+.form-group-title {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 1em;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+/* ERSETZTE/NEUE STILE FÜR MEHRFACHAUSWAHL IN DER TABELLE */
+
+.multiselect-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    width: 100%;
+    height: 28px; /* Gleiche Höhe wie andere Inline-Inputs */
+    padding: 0 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.multiselect-display:hover {
+    background-color: var(--card-active-bg);
+}
+
+.multiselect-values {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 0.5rem;
+}
+
+.multiselect-icon {
+    color: var(--text-secondary);
+    font-size: 0.8em;
+}
+
+.multiselect-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.checkbox-item:hover {
+    background-color: var(--card-active-bg);
+}
+
+.multiselect-checkbox {
+    /* Style für die Checkboxen selbst */
+    width: 1.2em;
+    height: 1.2em;
+    cursor: pointer;
+}
+
+.checkbox-item label {
+    cursor: pointer;
+}

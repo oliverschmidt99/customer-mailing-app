@@ -28,19 +28,30 @@ document.addEventListener("DOMContentLoaded", () => {
       const sortDirection = ref("asc");
       const selectedKontakte = ref(new Set());
 
+      // --- Modals ---
       const isAddModalOpen = ref(false);
       const isImportModalOpen = ref(false);
+      const isMultiSelectModalOpen = ref(false);
 
       const newContactData = ref({});
       const addModalVorlageId = ref(activeVorlageId.value);
       const verknuepfungsOptionen = ref({});
 
+      const multiSelectEditData = ref({
+        eigenschaft: null,
+        kontakt: null,
+        selectedValues: [],
+      });
+
+      // --- Import-Status ---
       const importStep = ref(1);
       const importTargetVorlageId = ref(null);
-      const importFile = ref(null);
       const importData = ref({});
       const importMappings = ref({});
       const importError = ref("");
+      const isUploading = ref(false);
+      const uploadProgress = ref(0);
+      const uploadStatus = ref("");
 
       // --- Computed Properties ---
       const activeVorlage = computed(() => {
@@ -64,7 +75,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
           let comparison = 0;
 
-          // Versuch, als Datum zu parsen (Format YYYY-MM-DD oder DD.MM.YYYY)
           const dateA = new Date(
             valA.replace(/(\d{2})\.(\d{2})\.(\d{4})/, "$3-$2-$1")
           );
@@ -75,13 +85,11 @@ document.addEventListener("DOMContentLoaded", () => {
           if (!isNaN(dateA) && !isNaN(dateB) && valA && valB) {
             comparison = dateA - dateB;
           } else {
-            // Versuch, als Zahl zu parsen
             const numA = parseFloat(valA);
             const numB = parseFloat(valB);
             if (!isNaN(numA) && !isNaN(numB)) {
               comparison = numA - numB;
             } else {
-              // Standard-String-Vergleich
               comparison = valA.toString().localeCompare(valB.toString());
             }
           }
@@ -105,7 +113,6 @@ document.addEventListener("DOMContentLoaded", () => {
         vorlagen.value.find((v) => v.id === addModalVorlageId.value)
       );
 
-      // KORREKTUR: Eigene Computed Property für die Eigenschaften im Modal
       const addModalEigenschaften = computed(() => {
         if (!addModalVorlage.value) return [];
         return addModalVorlage.value.gruppen.flatMap((g) => g.eigenschaften);
@@ -117,17 +124,19 @@ document.addEventListener("DOMContentLoaded", () => {
           .flatMap((g) => g.eigenschaften)
           .filter((e) => filterState.value[e.name]);
       });
+
       const importTargetVorlage = computed(() => {
         if (!importTargetVorlageId.value) return null;
         return vorlagen.value.find((v) => v.id === importTargetVorlageId.value);
       });
+
       const usedTemplateProperties = computed(() => {
         return new Set(Object.values(importMappings.value).filter(Boolean));
       });
 
       // --- Watchers ---
       watch(activeVorlageId, () => {
-        selectedKontakte.value.clear(); // Auswahl zurücksetzen bei Vorlagenwechsel
+        selectedKontakte.value.clear();
       });
 
       watch(
@@ -142,7 +151,6 @@ document.addEventListener("DOMContentLoaded", () => {
               });
             filterState.value = newFilterState;
 
-            // Lade Verknüpfungsoptionen für die neue Vorlage
             verknuepfungsOptionen.value = {};
             const optionPromises = [];
             for (const gruppe of newVorlage.gruppen) {
@@ -186,7 +194,7 @@ document.addEventListener("DOMContentLoaded", () => {
           return `ID: ${kontaktId}`;
         }
         const options = verknuepfungsOptionen.value[eigenschaft.id];
-        const found = options.find((opt) => opt.id == kontaktId); // Use == for loose comparison
+        const found = options.find((opt) => opt.id == kontaktId);
         return found ? found.display_name : `ID: ${kontaktId} (ungültig)`;
       };
 
@@ -383,7 +391,6 @@ document.addEventListener("DOMContentLoaded", () => {
         importStep.value = 1;
         importData.value = {};
         importMappings.value = {};
-        importFile.value = null;
         importError.value = "";
         importTargetVorlageId.value = activeVorlageId.value;
         isImportModalOpen.value = true;
@@ -391,48 +398,69 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const closeImportModal = () => (isImportModalOpen.value = false);
 
-      const handleFileUpload = async (event) => {
+      const handleFileUpload = (event) => {
         const files = event.target.files;
         if (!files || files.length === 0 || !importTargetVorlageId.value) {
           importError.value =
             "Bitte zuerst eine Vorlage auswählen und dann eine oder mehrere Dateien hochladen.";
           return;
         }
+
         importError.value = "";
+        isUploading.value = true;
+        uploadProgress.value = 0;
+        uploadStatus.value = `Lade ${files.length} Datei(en) hoch...`;
+
         const formData = new FormData();
         for (const file of files) {
           formData.append("files", file);
         }
 
-        try {
-          const response = await fetch("/import/upload", {
-            method: "POST",
-            body: formData,
-          });
-          const result = await response.json();
-          if (!response.ok) {
-            throw new Error(result.error || "Unbekannter Fehler");
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/import/upload", true);
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            uploadProgress.value = percentComplete;
+            uploadStatus.value = `Lade hoch... ${percentComplete}%`;
           }
-          importData.value = result;
+        };
 
-          const allEigenschaften = importTargetVorlage.value.gruppen.flatMap(
-            (g) => g.eigenschaften
-          );
-          result.headers.forEach((h) => {
-            const matchingProp = allEigenschaften.find(
-              (p) => p.name.toLowerCase() === h.toLowerCase()
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            uploadStatus.value = "Daten werden verarbeitet...";
+            const result = JSON.parse(xhr.responseText);
+
+            importData.value = result;
+            const allEigenschaften = importTargetVorlage.value.gruppen.flatMap(
+              (g) => g.eigenschaften
             );
-            if (matchingProp) {
-              importMappings.value[h] = matchingProp.name;
-            } else {
-              importMappings.value[h] = "";
+            result.headers.forEach((h) => {
+              const matchingProp = allEigenschaften.find(
+                (p) => p.name.toLowerCase() === h.toLowerCase()
+              );
+              importMappings.value[h] = matchingProp ? matchingProp.name : "";
+            });
+            importStep.value = 2;
+          } else {
+            try {
+              const result = JSON.parse(xhr.responseText);
+              importError.value = `Fehler: ${result.error || xhr.statusText}`;
+            } catch (e) {
+              importError.value = `Ein Serverfehler ist aufgetreten (Status: ${xhr.status}).`;
             }
-          });
+          }
+          isUploading.value = false;
+        };
 
-          importStep.value = 2;
-        } catch (error) {
-          importError.value = `Fehler: ${error.message}`;
-        }
+        xhr.onerror = () => {
+          isUploading.value = false;
+          importError.value =
+            "Ein Netzwerkfehler ist aufgetreten. Bitte überprüfe deine Verbindung.";
+        };
+
+        xhr.send(formData);
       };
 
       const finalizeImport = async () => {
@@ -462,6 +490,27 @@ document.addEventListener("DOMContentLoaded", () => {
         return `/export/${activeVorlageId.value}/${format}`;
       };
 
+      const openMultiSelectModal = (eigenschaft, kontakt) => {
+        const currentValues = kontakt.daten[eigenschaft.name] || "";
+        multiSelectEditData.value = {
+          eigenschaft: eigenschaft,
+          kontakt: kontakt,
+          selectedValues: currentValues
+            ? currentValues.split(",").map((v) => v.trim())
+            : [],
+        };
+        isMultiSelectModalOpen.value = true;
+      };
+
+      const saveMultiSelect = () => {
+        const { kontakt, eigenschaft, selectedValues } =
+          multiSelectEditData.value;
+        const newValue = selectedValues.join(", ");
+        updateField(kontakt, eigenschaft.name, newValue);
+        isMultiSelectModalOpen.value = false;
+      };
+
+      // KORRIGIERTES, VOLLSTÄNDIGES RETURN-STATEMENT
       return {
         vorlagen,
         activeVorlageId,
@@ -473,7 +522,7 @@ document.addEventListener("DOMContentLoaded", () => {
         newContactData,
         addModalVorlageId,
         addModalVorlage,
-        addModalEigenschaften, // <-- Hier zurückgeben
+        addModalEigenschaften,
         verknuepfungsOptionen,
         filteredEigenschaften,
         isImportModalOpen,
@@ -507,6 +556,13 @@ document.addEventListener("DOMContentLoaded", () => {
         finalizeImport,
         getExportUrl,
         getVerknuepfungDisplayName,
+        isUploading,
+        uploadProgress,
+        uploadStatus,
+        isMultiSelectModalOpen,
+        multiSelectEditData,
+        openMultiSelectModal,
+        saveMultiSelect,
       };
     },
   });

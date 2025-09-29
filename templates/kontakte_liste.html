@@ -3,9 +3,9 @@
 {% block title %}Kontaktübersicht{% endblock %}
 
 {% block head_styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/kontakte.css', v='1.6') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/kontakte.css', v='2.0') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/filter.css', v='1.5') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/import_export.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/import_export.css', v='1.1') }}">
 {% endblock %}
 
 {% block content %}
@@ -32,7 +32,8 @@
                 <div class="dropdown-content">
                     <a :href="getExportUrl('csv')">Als CSV</a>
                     <a :href="getExportUrl('xlsx')">Als Excel (.xlsx)</a>
-                    <a :href="getExportUrl('pdf')">Als PDF (Druck)</a>
+                    <a :href="getExportUrl('pdf')">Als PDF (Detailansicht)</a>
+                    <a :href="getExportUrl('pdf-labels')">Als Adressaufkleber (PDF)</a>
                 </div>
             </div>
         </div>
@@ -96,7 +97,17 @@
                             @change="toggleSelection(kontakt.id)">
                     </td>
                     <td v-for="eigenschaft in filteredEigenschaften" :key="eigenschaft.id">
-                        <input v-if="eigenschaft.datentyp === 'Text'" type="text" class="inline-edit-input"
+
+                        <div v-if="eigenschaft.datentyp === 'Auswahl' && eigenschaft.allow_multiselect"
+                            class="multiselect-display" @click="openMultiSelectModal(eigenschaft, kontakt)"
+                            title="Klicken zum Bearbeiten">
+                            <span class="multiselect-values">
+                                {[ kontakt.daten[eigenschaft.name] || '--' ]}
+                            </span>
+                            <span class="multiselect-icon">▼</span>
+                        </div>
+
+                        <input v-else-if="eigenschaft.datentyp === 'Text'" type="text" class="inline-edit-input"
                             :value="kontakt.daten[eigenschaft.name]"
                             @change="updateField(kontakt, eigenschaft.name, $event.target.value)">
                         <select v-else-if="eigenschaft.datentyp === 'Auswahl'" class="inline-select"
@@ -141,7 +152,7 @@
     </div>
 
     <div v-if="isAddModalOpen" class="modal-overlay">
-        <div class="modal-content">
+        <div class="modal-content modal-xlarge">
             <div class="modal-header">
                 <h2>Neuen Kontakt erstellen</h2>
                 <button type="button" @click="closeAddModal" class="modal-close-btn">&times;</button>
@@ -153,11 +164,37 @@
                         <option v-for="v in vorlagen" :key="v.id" :value="v.id">{[ v.name ]}</option>
                     </select>
                 </div>
-                <div v-if="addModalVorlage">
-                    <div class="form-group" v-for="e in addModalEigenschaften" :key="e.id">
-                        <label :for="'new-contact-' + e.name">{[ e.name ]}:</label>
-                        <input type="text" :id="'new-contact-' + e.name" v-model="newContactData[e.name]"
-                            class="input-field">
+                <hr>
+
+                <div v-if="addModalVorlage" class="modal-form-columns">
+                    <div v-for="gruppe in addModalVorlage.gruppen" :key="gruppe.id" class="form-group-box">
+                        <h4 class="form-group-title">{[ gruppe.name ]}</h4>
+                        <div v-for="e in gruppe.eigenschaften" :key="e.id" class="form-group">
+                            <label :for="'new-contact-' + e.name">{[ e.name ]}:</label>
+
+                            <select v-if="e.datentyp === 'Auswahl' && e.allow_multiselect" :id="'new-contact-' + e.name"
+                                v-model="newContactData[e.name]" class="input-field" multiple>
+                                <option v-for="option in e.optionen.split(',')" :key="option.trim()"
+                                    :value="option.trim()">
+                                    {[ option.trim() ]}
+                                </option>
+                            </select>
+
+                            <select v-else-if="e.datentyp === 'Auswahl'" :id="'new-contact-' + e.name"
+                                v-model="newContactData[e.name]" class="input-field">
+                                <option value="">-- Bitte wählen --</option>
+                                <option v-for="option in e.optionen.split(',')" :key="option.trim()"
+                                    :value="option.trim()">
+                                    {[ option.trim() ]}
+                                </option>
+                            </select>
+
+                            <input v-else-if="e.datentyp === 'Datum'" :id="'new-contact-' + e.name" type="date"
+                                v-model="newContactData[e.name]" class="input-field">
+
+                            <input v-else :id="'new-contact-' + e.name" type="text" v-model="newContactData[e.name]"
+                                class="input-field">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -186,10 +223,18 @@
                     <div class="form-group">
                         <label for="import-file-input">Datei(en) auswählen:</label>
                         <input type="file" id="import-file-input" @change="handleFileUpload" class="input-field"
-                            :disabled="!importTargetVorlageId" multiple accept=".csv,.msg,.oft,.txt,.vcf,.xlsx">
+                            :disabled="!importTargetVorlageId || isUploading" multiple
+                            accept=".csv,.msg,.oft,.txt,.vcf,.xlsx">
                     </div>
+
+                    <div v-if="isUploading" class="progress-container">
+                        <div class="progress-bar" :style="{ width: uploadProgress + '%' }"></div>
+                        <span class="progress-text">{[ uploadStatus ]}</span>
+                    </div>
+
                     <div v-if="importError" class="alert-danger">{[ importError ]}</div>
                 </div>
+
                 <div v-if="importStep === 2 && importTargetVorlage">
                     <p>Bitte ordne die Spalten aus deiner Datei den Feldern der Vorlage <strong>"{[
                             importTargetVorlage.name ]}"</strong> zu.</p>
@@ -221,6 +266,29 @@
                     class="button secondary">Zurück</button>
                 <button type="button" v-if="importStep === 2" @click="finalizeImport" class="button">Import
                     abschließen</button>
+            </div>
+        </div>
+    </div>
+
+    <div v-if="isMultiSelectModalOpen" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 v-if="multiSelectEditData.eigenschaft">Werte für "{[ multiSelectEditData.eigenschaft.name ]}"
+                    auswählen</h2>
+                <button type="button" @click="isMultiSelectModalOpen = false" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body multiselect-modal-body" v-if="multiSelectEditData.eigenschaft">
+                <div v-for="option in multiSelectEditData.eigenschaft.optionen.split(',')" :key="option.trim()"
+                    class="checkbox-item">
+                    <input type="checkbox" :id="'ms-opt-' + option.trim()" :value="option.trim()"
+                        v-model="multiSelectEditData.selectedValues" class="multiselect-checkbox">
+                    <label :for="'ms-opt-' + option.trim()">{[ option.trim() ]}</label>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" @click="isMultiSelectModalOpen = false"
+                    class="button secondary">Abbrechen</button>
+                <button type="button" @click="saveMultiSelect" class="button">Speichern</button>
             </div>
         </div>
     </div>

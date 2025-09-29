@@ -23,7 +23,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const actionUrl = ref(
         document.getElementById("action-url-data").textContent.slice(1, -1)
       );
-      // NEU: Lade die globalen Auswahloptionen
       const selectionOptions = ref(
         JSON.parse(
           document.getElementById("selection-options-data").textContent
@@ -31,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       // Reaktive Zustände
-      const vorlage = ref(JSON.parse(JSON.stringify(initialVorlageData))); // Tiefe Kopie als Arbeitskopie
+      const vorlage = ref(JSON.parse(JSON.stringify(initialVorlageData)));
       const isSaveAsModalOpen = ref(false);
       const newVorlageName = ref("");
       const suggestions = ref({ categories: [] });
@@ -88,9 +87,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         alert("Keine Änderungen zum Speichern vorhanden.");
       };
-
-      // ... Rest der JS-Datei bleibt unverändert ...
-      // (saveVorlage, saveAsNewVorlage, toggleGroupCollapse, etc.)
 
       const saveVorlage = async () => {
         try {
@@ -264,6 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
           name: "",
           datentyp: "Text",
           optionen: "",
+          allow_multiselect: false,
         });
       };
 
@@ -280,6 +277,7 @@ document.addEventListener("DOMContentLoaded", () => {
             name: attr,
             datentyp: "Text",
             optionen: "",
+            allow_multiselect: false,
           })),
         };
         vorlage.value.gruppen.push(g);
@@ -287,13 +285,16 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       const addEmptyGruppe = () => {
-        vorlage.value.gruppen.push({ name: "Neue Gruppe", eigenschaften: [] });
+        vorlage.value.gruppen.push({
+          name: "Neue Gruppe",
+          eigenschaften: [],
+        });
       };
 
       return {
         vorlage,
         suggestions,
-        selectionOptions, // <-- NEU
+        selectionOptions,
         pageTitle,
         selectedSuggestionCategory,
         viewMode,
@@ -316,7 +317,7 @@ document.addEventListener("DOMContentLoaded", () => {
         removeGruppe,
         expandAll,
         collapseAll,
-        applyGlobalOption, // <-- NEU
+        applyGlobalOption,
       };
     },
   });

@@ -3,7 +3,7 @@
 {% block title %}Vorlagen-Editor{% endblock %}
 
 {% block head_styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/vorlage_editor.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/vorlage_editor.css', v='1.1') }}">
 {% endblock %}
 
 {% block content %}
@@ -124,6 +124,9 @@
                         </button>
                     </div>
                     <div v-if="prop.datentyp === 'Auswahl'" class="modal-property-row-secondary">
+                        <label>Mehrfachauswahl</label>
+                        <input type="checkbox" v-model="prop.allow_multiselect">
+
                         <label for="global-options">Globale Liste nutzen</label>
                         <select id="global-options" @change="applyGlobalOption($event, propIndex)" class="input-field">
                             <option value="">-- Globale Liste wählen --</option>

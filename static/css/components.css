@@ -69,9 +69,16 @@ input:focus, select:focus, textarea:focus {
     flex-shrink: 0;
 }
 
-/* Neue Klasse für größere Modals */
+/* Klasse für größere Modals */
 .modal-content.modal-large {
     width: 80vw;
     max-width: 1000px;
     height: 80vh;
+}
+
+/* NEUE KLASSE für extragroße Modals */
+.modal-content.modal-xlarge {
+    width: 90vw;
+    max-width: 1200px;
+    height: 85vh;
 }

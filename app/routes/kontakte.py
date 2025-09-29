@@ -38,6 +38,8 @@ def auflisten():
                             "name": e.name,
                             "datentyp": e.datentyp,
                             "optionen": e.optionen,
+                            # KORREKTUR: Fehlendes Attribut hinzugefügt
+                            "allow_multiselect": e.allow_multiselect,
                         }
                         for e in g.eigenschaften
                     ],

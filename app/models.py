@@ -53,6 +53,8 @@ class Eigenschaft(db.Model):
     datentyp = db.Column(db.String(50), nullable=False)
     optionen = db.Column(db.Text)
     gruppe_id = db.Column(db.Integer, db.ForeignKey("gruppe.id"), nullable=False)
+    # NEUES FELD für Mehrfachauswahl
+    allow_multiselect = db.Column(db.Boolean, default=False, nullable=False)
 
 
 class Kontakt(db.Model):
@@ -74,6 +76,11 @@ class Kontakt(db.Model):
 
     def set_data(self, data_dict: Dict[str, Any]):
         """Speichert das Python-Dictionary als JSON und aktualisiert die Suchfelder."""
+        # Konvertiere Listen (von Multi-Selects) in kommaseparierte Strings
+        for key, value in data_dict.items():
+            if isinstance(value, list):
+                data_dict[key] = ", ".join(map(str, value))
+
         # Aktualisiere die Suchfelder basierend auf den Daten
         self.vorname = data_dict.get("Vorname", data_dict.get("First Name", ""))
         self.nachname = data_dict.get("Nachname", data_dict.get("Last Name", ""))

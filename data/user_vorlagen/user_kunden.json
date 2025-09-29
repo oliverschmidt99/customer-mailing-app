@@ -1,0 +1,227 @@
+{
+  "name": "Kunden",
+  "gruppen": [
+    {
+      "name": "Personendaten",
+      "eigenschaften": [
+        {
+          "name": "Anrede",
+          "datentyp": "Auswahl",
+          "optionen": "Herr, Frau, Familie, Firma, Team",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Titel",
+          "datentyp": "Auswahl",
+          "optionen": "B. A., B. Sc., B. Eng., LL. B., B. F. A., B. Mus., B. Ed., M. A., M. Sc., M. Eng., LL. M., M. F. A., M. Mus., M. Ed., MBA, M. Arch., Dipl.-Ing., Dipl.-Kfm., Dipl.-Kffr., Dipl.-Hdl., Dipl.-Päd., Mag., Lic., Dr. med., Dr. iur., Dr. rer. nat., Dr. phil., Dr. rer. pol., Dr. oec., Dr.-Ing., Ph.D., Prof., Prof. Dr.",
+          "allow_multiselect": true
+        },
+        {
+          "name": "Vorname",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Nachname",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Zwischen Name",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        }
+      ]
+    },
+    {
+      "name": "Unternehmensdaten 2",
+      "eigenschaften": [
+        {
+          "name": "Firmenname 2",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Rechtsform 2",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Branche 2",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Gründungsjahr 2",
+          "datentyp": "Datum",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Handelsregisternummer 2er",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Umsatzsteuer-ID 2",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Website 2",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        }
+      ]
+    },
+    {
+      "name": "Unternehmensdaten 1",
+      "eigenschaften": [
+        {
+          "name": "Firmenname 1",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Rechtsform 1",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Branche 1",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Gründungsjahr 1",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Handelsregisternummer 1er",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Umsatzsteuer-ID 1",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Website 1",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        }
+      ]
+    },
+    {
+      "name": "Kontaktinformationen",
+      "eigenschaften": [
+        {
+          "name": "E-Mail 1",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Telefon (geschäftlich)",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Mobilnummer",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Website",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "E-Mail 2",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        }
+      ]
+    },
+    {
+      "name": "Adresse",
+      "eigenschaften": [
+        {
+          "name": "Straße",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Hausnummer",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Postleitzahl",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Ort",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Land",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        }
+      ]
+    },
+    {
+      "name": "Kundeninformationen",
+      "eigenschaften": [
+        {
+          "name": "Kundennummer",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Post-Art",
+          "datentyp": "Auswahl",
+          "optionen": "Digital 💻, Post 📬, Kalender 📅, Persönlich 🤝",
+          "allow_multiselect": false
+        },
+        {
+          "name": "Notizen",
+          "datentyp": "Text",
+          "optionen": "",
+          "allow_multiselect": false
+        }
+      ]
+    }
+  ]
+}
