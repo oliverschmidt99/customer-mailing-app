@@ -4,29 +4,24 @@ import os
 from typing import Dict, Any, List, Union
 
 from flask import current_app
-from werkzeug.utils import secure_filename
-
-# KORRIGIERTER IMPORT-PFAD: Nutzt relative Imports innerhalb des 'app'-Pakets
 from .importers import csv_importer, msg_importer, vcf_importer, xlsx_importer
 
 
-def import_file(file_storage) -> Union[List[Dict[str, Any]], Dict[str, str]]:
+def import_file_from_path(
+    file_path: str,
+) -> Union[List[Dict[str, Any]], Dict[str, str]]:
     """
-    Erkennt den Dateityp und ruft den entsprechenden Parser auf.
+    Erkennt den Dateityp eines existierenden Pfades und ruft den entsprechenden Parser auf.
+    Diese Funktion ist für die Hintergrundverarbeitung gedacht.
 
     Args:
-        file_storage: Das FileStorage-Objekt von Flask.
+        file_path: Der vollständige Pfad zur zu importierenden Datei.
 
     Returns:
         Eine Liste von Kontaktdaten-Dictionaries oder ein Fehler-Dictionary.
     """
-    filename = secure_filename(file_storage.filename)
+    filename = os.path.basename(file_path)
     file_ext = os.path.splitext(filename)[1].lower()
-
-    temp_dir = current_app.config["UPLOAD_FOLDER"]
-    os.makedirs(temp_dir, exist_ok=True)
-    file_path = os.path.join(temp_dir, filename)
-    file_storage.save(file_path)
 
     try:
         if file_ext == ".csv":
@@ -40,9 +35,8 @@ def import_file(file_storage) -> Union[List[Dict[str, Any]], Dict[str, str]]:
         if file_ext in [".msg", ".oft"]:
             return msg_importer.parse_msg_file(file_path)
 
-        return {
-            "error": f"Dateityp {file_ext} wird für den Import noch nicht unterstützt."
-        }
-    finally:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        return {"error": f"Dateityp {file_ext} wird nicht unterstützt."}
+    except (IOError, ValueError) as e:
+        # Fange spezifische Parser-Fehler ab
+        current_app.logger.error(f"Parser-Fehler bei Datei {filename}: {e}")
+        return {"error": "Fehler beim Parsen der Datei."}

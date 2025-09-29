@@ -51,7 +51,7 @@
             <h3>Filter &amp; Spaltenreihenfolge</h3>
             <button type="button" @click.stop="toggleEditOrderMode" class="button secondary filter-edit-button">
                 <img src="{{ url_for('static', filename='img/icon_edit.svg') }}" alt="Reihenfolge bearbeiten">
-                {[ editOrderMode ? 'Reihenfolge speichern' : 'Reihenfolge bearbeiten' ]}
+                {[ editOrderMode ? 'Fertig' : 'Reihenfolge bearbeiten' ]}
             </button>
         </div>
         <div v-show="isFilterVisible" class="filter-body">

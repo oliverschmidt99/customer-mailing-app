@@ -6,6 +6,7 @@ from typing import List, Dict, Any
 
 from flask import Flask
 from flask_migrate import Migrate
+from flask_executor import Executor
 from .models import db
 
 
@@ -21,9 +22,7 @@ def get_attribute_suggestions() -> Dict[str, Any]:
         )
         with open(filepath, "r", encoding="utf-8") as file:
             return json.load(file)
-    except FileNotFoundError:
-        return {}
-    except json.JSONDecodeError as err:
+    except (FileNotFoundError, json.JSONDecodeError) as err:
         print(f"Fehler beim Laden von data/attribute_suggestions.json: {err}")
         return {}
 
@@ -46,9 +45,7 @@ def get_selection_options() -> Dict[str, List[str]]:
                 for item in options_list
             }
             return options_dict
-    except FileNotFoundError:
-        return {}
-    except json.JSONDecodeError as err:
+    except (FileNotFoundError, json.JSONDecodeError) as err:
         print(f"Fehler beim Laden von data/selection_options.json: {err}")
         return {}
 
@@ -80,6 +77,9 @@ def create_app() -> Flask:
     db.init_app(app)
     Migrate(app, db)
 
+    # Executor für Hintergrundaufgaben initialisieren
+    Executor(app)
+
     with app.app_context():
         # pylint: disable=import-outside-toplevel, cyclic-import
         from .routes import main, vorlagen, kontakte, api, import_export, settings
@@ -89,6 +89,6 @@ def create_app() -> Flask:
         app.register_blueprint(kontakte.bp)
         app.register_blueprint(api.bp)
         app.register_blueprint(import_export.bp)
-        app.register_blueprint(settings.bp)  # <-- NEU
+        app.register_blueprint(settings.bp)
 
         return app

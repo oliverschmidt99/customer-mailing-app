@@ -81,7 +81,15 @@ def _parse_message_text(text: str) -> Dict[str, Any]:
         ]
 
         if len(address_parts) > 0:
-            data["Straße"] = address_parts[0]
+            street_line = address_parts[0]
+            # KORREKTUR: Versuche, Straße und Hausnummer zu trennen
+            street_match = re.match(r"^(.+?)\s+([\d\w\s/.-]+)$", street_line)
+            if street_match:
+                data["Straße"] = street_match.group(1).strip().rstrip(",")
+                data["Hausnummer"] = street_match.group(2).strip()
+            else:
+                # Fallback, falls keine Hausnummer gefunden wird
+                data["Straße"] = street_line
 
         if len(address_parts) > 1:
             # Suche nach Muster: PLZ Ort

@@ -185,6 +185,55 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       // --- Methoden ---
+      const onGroupSort = (event) => {
+        const movedItem = activeVorlage.value.gruppen.splice(
+          event.oldIndex,
+          1
+        )[0];
+        activeVorlage.value.gruppen.splice(event.newIndex, 0, movedItem);
+      };
+
+      const onItemSort = (gruppe, event) => {
+        const movedItem = gruppe.eigenschaften.splice(event.oldIndex, 1)[0];
+        gruppe.eigenschaften.splice(event.newIndex, 0, movedItem);
+      };
+
+      const toggleEditOrderMode = async () => {
+        editOrderMode.value = !editOrderMode.value;
+
+        if (editOrderMode.value) {
+          // Modus wird aktiviert
+          await nextTick();
+          const groupEl = document.querySelector(".filter-body");
+          if (groupEl) {
+            sortableGroupInstance.value = new Sortable(groupEl, {
+              animation: 150,
+              onEnd: onGroupSort,
+              handle: ".drag-handle",
+            });
+          }
+          activeVorlage.value.gruppen.forEach((gruppe) => {
+            const itemEl = document.getElementById(`filter-group-${gruppe.id}`);
+            if (itemEl) {
+              sortableItemInstances.value[gruppe.id] = new Sortable(itemEl, {
+                animation: 150,
+                onEnd: (evt) => onItemSort(gruppe, evt),
+                handle: ".drag-handle",
+              });
+            }
+          });
+        } else {
+          // Modus wird deaktiviert
+          if (sortableGroupInstance.value)
+            sortableGroupInstance.value.destroy();
+          Object.values(sortableItemInstances.value).forEach((instance) =>
+            instance.destroy()
+          );
+          sortableGroupInstance.value = null;
+          sortableItemInstances.value = {};
+        }
+      };
+
       const getVerknuepfungDisplayName = (eigenschaft, kontaktId) => {
         if (
           !eigenschaft ||
@@ -256,48 +305,6 @@ document.addEventListener("DOMContentLoaded", () => {
           } catch (error) {
             alert(`Fehler beim Löschen: ${error.message}`);
           }
-        }
-      };
-
-      const onGroupSort = (event) => {
-        const movedItem = activeVorlage.value.gruppen.splice(
-          event.oldIndex,
-          1
-        )[0];
-        activeVorlage.value.gruppen.splice(event.newIndex, 0, movedItem);
-      };
-      const onItemSort = (gruppe, event) => {
-        const movedItem = gruppe.eigenschaften.splice(event.oldIndex, 1)[0];
-        gruppe.eigenschaften.splice(event.newIndex, 0, movedItem);
-      };
-
-      const toggleEditOrderMode = async () => {
-        editOrderMode.value = !editOrderMode.value;
-        await nextTick();
-        if (editOrderMode.value) {
-          const groupEl = document.querySelector(".filter-body");
-          sortableGroupInstance.value = new Sortable(groupEl, {
-            animation: 150,
-            onEnd: onGroupSort,
-            handle: ".drag-handle",
-          });
-          activeVorlage.value.gruppen.forEach((gruppe) => {
-            const itemEl = document.getElementById(`filter-group-${gruppe.id}`);
-            if (itemEl) {
-              sortableItemInstances.value[gruppe.id] = new Sortable(itemEl, {
-                animation: 150,
-                onEnd: (evt) => onItemSort(gruppe, evt),
-                handle: ".drag-handle",
-              });
-            }
-          });
-        } else {
-          if (sortableGroupInstance.value)
-            sortableGroupInstance.value.destroy();
-          Object.values(sortableItemInstances.value).forEach((instance) =>
-            instance.destroy()
-          );
-          sortableItemInstances.value = {};
         }
       };
 
@@ -428,21 +435,13 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            uploadStatus.value = "Daten werden verarbeitet...";
+          if (xhr.status === 202) {
             const result = JSON.parse(xhr.responseText);
-
-            importData.value = result;
-            const allEigenschaften = importTargetVorlage.value.gruppen.flatMap(
-              (g) => g.eigenschaften
-            );
-            result.headers.forEach((h) => {
-              const matchingProp = allEigenschaften.find(
-                (p) => p.name.toLowerCase() === h.toLowerCase()
-              );
-              importMappings.value[h] = matchingProp ? matchingProp.name : "";
-            });
-            importStep.value = 2;
+            if (result.task_id) {
+              uploadStatus.value =
+                "Upload abgeschlossen. Starte Verarbeitung...";
+              pollStatus(result.task_id);
+            }
           } else {
             try {
               const result = JSON.parse(xhr.responseText);
@@ -450,17 +449,56 @@ document.addEventListener("DOMContentLoaded", () => {
             } catch (e) {
               importError.value = `Ein Serverfehler ist aufgetreten (Status: ${xhr.status}).`;
             }
+            isUploading.value = false;
           }
-          isUploading.value = false;
         };
 
         xhr.onerror = () => {
           isUploading.value = false;
-          importError.value =
-            "Ein Netzwerkfehler ist aufgetreten. Bitte überprüfe deine Verbindung.";
+          importError.value = "Ein Netzwerkfehler ist aufgetreten.";
         };
 
         xhr.send(formData);
+      };
+
+      const pollStatus = (taskId) => {
+        const interval = setInterval(async () => {
+          try {
+            const response = await fetch(`/import/status/${taskId}`);
+            const result = await response.json();
+
+            if (result.status === "processing") {
+              const percentComplete = Math.round(
+                (result.progress / result.total) * 100
+              );
+              uploadProgress.value = percentComplete;
+              uploadStatus.value = `Verarbeite Datei ${result.progress} von ${result.total}... ${percentComplete}%`;
+            } else if (result.status === "complete") {
+              clearInterval(interval);
+              uploadProgress.value = 100;
+              uploadStatus.value = "Verarbeitung abgeschlossen!";
+              isUploading.value = false;
+
+              importData.value = result.data;
+              const allEigenschaften =
+                importTargetVorlage.value.gruppen.flatMap(
+                  (g) => g.eigenschaften
+                );
+              result.data.headers.forEach((h) => {
+                const matchingProp = allEigenschaften.find(
+                  (p) => p.name.toLowerCase() === h.toLowerCase()
+                );
+                importMappings.value[h] = matchingProp ? matchingProp.name : "";
+              });
+              importStep.value = 2;
+            }
+          } catch (error) {
+            clearInterval(interval);
+            isUploading.value = false;
+            importError.value =
+              "Fehler bei der Abfrage des Verarbeitungsstatus.";
+          }
+        }, 1000);
       };
 
       const finalizeImport = async () => {
@@ -510,7 +548,6 @@ document.addEventListener("DOMContentLoaded", () => {
         isMultiSelectModalOpen.value = false;
       };
 
-      // KORRIGIERTES, VOLLSTÄNDIGES RETURN-STATEMENT
       return {
         vorlagen,
         activeVorlageId,

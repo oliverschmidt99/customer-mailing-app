@@ -1,23 +1,74 @@
 # app/routes/import_export.py
 """This module handles the import and export of contact data."""
 import os
+import uuid
 from datetime import datetime
 from typing import List, Dict, Any, Tuple
 
-from flask import Blueprint, request, jsonify, flash, url_for, Response
+from flask import Blueprint, request, jsonify, flash, url_for, Response, current_app
+from flask_executor import Executor
+from werkzeug.utils import secure_filename
+
 from ..models import db, Vorlage, Kontakt
 from ..services import importer_service, exporter_service
 
 bp = Blueprint("import_export", __name__)
 ALLOWED_EXTENSIONS = {"csv", "msg", "oft", "txt", "vcf", "xlsx"}
 
+# Ein einfacher In-Memory-Speicher für den Fortschritt der Tasks
+task_progress = {}
+
+
+def process_files_task(task_id: str, file_paths: List[Dict[str, str]]):
+    """
+    Diese Funktion läuft im Hintergrund und verarbeitet die hochgeladenen Dateien.
+    """
+    total_files = len(file_paths)
+    all_records: List[Dict[str, Any]] = []
+    error_list: List[Dict[str, str]] = []
+
+    task_progress[task_id] = {
+        "status": "processing",
+        "progress": 0,
+        "total": total_files,
+        "result": None,
+    }
+
+    for i, file_info in enumerate(file_paths):
+        filename = file_info["original_name"]
+        filepath = file_info["path"]
+
+        try:
+            data = importer_service.import_file_from_path(filepath)
+            if isinstance(data, dict) and "error" in data:
+                error_list.append({"filename": filename, "error": data["error"]})
+            else:
+                all_records.extend(data)
+        except (IOError, ValueError) as e:
+            error_list.append(
+                {"filename": filename, "error": f"Systemfehler: {str(e)}"}
+            )
+        finally:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+
+        task_progress[task_id]["progress"] = i + 1
+
+    all_headers = set(key for record in all_records for key in record.keys())
+
+    task_progress[task_id]["status"] = "complete"
+    task_progress[task_id]["result"] = {
+        "headers": list(all_headers),
+        "preview_data": all_records[:5],
+        "original_data": all_records,
+        "errors": error_list,
+    }
+
 
 @bp.route("/import/upload", methods=["POST"])
 def upload_import_file():
     """
-    Verarbeitet den Upload einer oder mehrerer Dateien, extrahiert die Kontaktdaten
-    und gibt die Ergebnisse zur Zuordnung zurück. Fehlerhafte Dateien werden
-    ignoriert und protokolliert.
+    Nimmt Dateien entgegen, startet die Hintergrundverarbeitung und gibt eine Task-ID zurück.
     """
     if "files" not in request.files:
         return jsonify({"error": "Keine Dateien im Request gefunden."}), 400
@@ -26,76 +77,40 @@ def upload_import_file():
     if not files or files[0].filename == "":
         return jsonify({"error": "Keine Dateien ausgewählt."}), 400
 
-    all_records: List[Dict[str, Any]] = []
-    error_list: List[Dict[str, str]] = []
+    executor = Executor(current_app)
+    task_id = uuid.uuid4().hex
+    temp_dir = current_app.config["UPLOAD_FOLDER"]
+    file_paths = []
 
     for file in files:
-        filename = file.filename if file.filename else "Unbekannt"
-        file_ext = os.path.splitext(filename)[1].lower().replace(".", "")
+        filename = secure_filename(file.filename) if file.filename else "tempfile"
+        file_ext = os.path.splitext(filename)[1].lower()
 
-        if file_ext not in ALLOWED_EXTENSIONS:
-            error_list.append(
-                {"filename": filename, "error": f"Dateityp '{file_ext}' nicht erlaubt."}
-            )
-            continue
+        temp_filename = f"{task_id}_{uuid.uuid4().hex}{file_ext}"
+        filepath = os.path.join(temp_dir, temp_filename)
+        file.save(filepath)
+        file_paths.append({"path": filepath, "original_name": file.filename})
 
-        try:
-            # Wichtig: Dateiobjekt zurück zum Anfang setzen
-            file.seek(0)
-            data = importer_service.import_file(file)
+    executor.submit(process_files_task, task_id, file_paths)
 
-            if isinstance(data, dict) and "error" in data:
-                # Fehler vom Importer-Service (z.B. von msg_importer)
-                error_list.append({"filename": filename, "error": data["error"]})
-            else:
-                # Erfolg: Daten zur Liste hinzufügen
-                all_records.extend(data)
+    return jsonify({"task_id": task_id}), 202
 
-        except (IOError, OSError, ValueError) as e:
-            # Spezifische Fehler beim Datei-Handling oder Parsen
-            error_list.append(
-                {"filename": filename, "error": f"Fehler beim Lesen/Parsen: {str(e)}"}
-            )
-        except Exception as e:
-            # Fängt alle unerwarteten restlichen Fehler ab
-            error_list.append(
-                {
-                    "filename": filename,
-                    "error": f"Unerwarteter Systemfehler: {type(e).__name__} - {str(e)}",
-                }
-            )
 
-    if not all_records and error_list:
-        # Alle Dateien waren fehlerhaft
-        return (
-            jsonify(
-                {
-                    "error": "Es konnten keine gültigen Daten importiert werden.",
-                    "errors": error_list,
-                }
-            ),
-            400,
-        )
+@bp.route("/import/status/<string:task_id>", methods=["GET"])
+def get_import_status(task_id: str):
+    """
+    Gibt den aktuellen Status einer Hintergrundaufgabe zurück.
+    """
+    progress = task_progress.get(task_id)
+    if not progress:
+        return jsonify({"error": "Task nicht gefunden"}), 404
 
-    if not all_records:
-        return jsonify({"error": "Keine Daten in den Dateien gefunden."}), 400
+    if progress["status"] == "complete":
+        result_data = progress["result"]
+        task_progress.pop(task_id, None)  # Sicher entfernen
+        return jsonify({"status": "complete", "data": result_data})
 
-    # Sammle alle eindeutigen Spaltennamen aus allen erfolgreichen Records
-    all_headers = set()
-    for record in all_records:
-        all_headers.update(record.keys())
-
-    preview_data = all_records[:5]
-
-    # Gebe die erfolgreichen Daten und die Fehlerliste zurück
-    return jsonify(
-        {
-            "headers": list(all_headers),
-            "preview_data": preview_data,
-            "original_data": all_records,
-            "errors": error_list,
-        }
-    )
+    return jsonify(progress)
 
 
 @bp.route("/import/finalize", methods=["POST"])
@@ -109,10 +124,7 @@ def finalize_import():
     original_data = data.get("original_data")
 
     if not all([vorlage_id, mappings, original_data]):
-        return (
-            jsonify({"success": False, "error": "Fehlende Daten für den Import."}),
-            400,
-        )
+        return jsonify({"success": False, "error": "Fehlende Daten."}), 400
 
     vorlage = db.session.get(Vorlage, vorlage_id)
     if not vorlage:
