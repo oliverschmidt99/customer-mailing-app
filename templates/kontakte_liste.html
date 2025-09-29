@@ -49,15 +49,15 @@
             <span :class="['toggle-icon', { collapsed: !isFilterVisible }]">▼</span>
             <h3>Filter &amp; Spaltenreihenfolge</h3>
             <button type="button" @click.stop="toggleEditOrderMode" class="button secondary filter-edit-button">
-                <img :src="'/static/img/icon_edit.svg'" alt="Reihenfolge bearbeiten">
+                <img src="{{ url_for('static', filename='img/icon_edit.svg') }}" alt="Reihenfolge bearbeiten">
                 {[ editOrderMode ? 'Reihenfolge speichern' : 'Reihenfolge bearbeiten' ]}
             </button>
         </div>
         <div v-show="isFilterVisible" class="filter-body">
             <div v-for="gruppe in activeVorlage.gruppen" :key="gruppe.id" class="filter-group">
                 <div class="filter-group-header" @click="toggleGroupFilter(gruppe)">
-                    <img :src="getToggleIcon(gruppe)" class="group-toggle" :class="getGroupToggleState(gruppe)"
-                        alt="Checkbox-Status">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" :src="getToggleIcon(gruppe)"
+                        class="group-toggle" :class="getGroupToggleState(gruppe)" alt="Checkbox-Status">
                     <span v-if="editOrderMode" class="drag-handle">☰</span>
                     <span class="filter-group-title">{[ gruppe.name ]}</span>
                 </div>
@@ -154,7 +154,7 @@
                     </select>
                 </div>
                 <div v-if="addModalVorlage">
-                    <div class="form-group" v-for="e in addModalVorlage.eigenschaften" :key="e.id">
+                    <div class="form-group" v-for="e in addModalEigenschaften" :key="e.id">
                         <label :for="'new-contact-' + e.name">{[ e.name ]}:</label>
                         <input type="text" :id="'new-contact-' + e.name" v-model="newContactData[e.name]"
                             class="input-field">
@@ -204,7 +204,7 @@
                                     <optgroup v-for="gruppe in importTargetVorlage.gruppen" :key="gruppe.id"
                                         :label="gruppe.name">
                                         <option v-for="prop in gruppe.eigenschaften" :key="prop.id" :value="prop.name">
-                                            {[ prop.name ]} {[ (usedTemplateProperties.has(prop.name) &&
+                                            {[ prop.name ]} {[ (usedTemplateProperties.has(prop.name) &amp;&amp;
                                             importMappings[header] !== prop.name) ? '⛓️‍💥' : '' ]}
                                         </option>
                                     </optgroup>

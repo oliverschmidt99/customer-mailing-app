@@ -104,6 +104,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const addModalVorlage = computed(() =>
         vorlagen.value.find((v) => v.id === addModalVorlageId.value)
       );
+
+      // KORREKTUR: Eigene Computed Property für die Eigenschaften im Modal
+      const addModalEigenschaften = computed(() => {
+        if (!addModalVorlage.value) return [];
+        return addModalVorlage.value.gruppen.flatMap((g) => g.eigenschaften);
+      });
+
       const filteredEigenschaften = computed(() => {
         if (!activeVorlage.value) return [];
         return activeVorlage.value.gruppen
@@ -407,8 +414,12 @@ document.addEventListener("DOMContentLoaded", () => {
             throw new Error(result.error || "Unbekannter Fehler");
           }
           importData.value = result;
+
+          const allEigenschaften = importTargetVorlage.value.gruppen.flatMap(
+            (g) => g.eigenschaften
+          );
           result.headers.forEach((h) => {
-            const matchingProp = importTargetVorlage.value.eigenschaften.find(
+            const matchingProp = allEigenschaften.find(
               (p) => p.name.toLowerCase() === h.toLowerCase()
             );
             if (matchingProp) {
@@ -417,6 +428,7 @@ document.addEventListener("DOMContentLoaded", () => {
               importMappings.value[h] = "";
             }
           });
+
           importStep.value = 2;
         } catch (error) {
           importError.value = `Fehler: ${error.message}`;
@@ -461,6 +473,7 @@ document.addEventListener("DOMContentLoaded", () => {
         newContactData,
         addModalVorlageId,
         addModalVorlage,
+        addModalEigenschaften, // <-- Hier zurückgeben
         verknuepfungsOptionen,
         filteredEigenschaften,
         isImportModalOpen,
