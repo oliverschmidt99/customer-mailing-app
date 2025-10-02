@@ -23,22 +23,148 @@
     </div>
 
     <div class="card">
-        <h2>Absenderadresse für Exporte</h2>
-        <p>Diese Adresse wird als Absender auf den PDF-Adressaufklebern verwendet.</p>
-        <div class="form-group">
-            <label for="sender-address">Absender:</label>
-            <input type="text" id="sender-address" v-model="senderAddress" class="input-field">
+        <h2>Adressformat anpassen</h2>
+        <p>Definiere hier die Struktur des Empfänger-Adressfeldes. Nutze die verfügbaren Platzhalter.</p>
+
+        <div class="address-format-grid">
+            <div>
+                <div class="form-group">
+                    <label for="address-format-company">Format für Firmen (wenn "Firmenname" existiert):</label>
+                    <textarea id="address-format-company" v-model="addressFormats.company" class="input-field"
+                        rows="5"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="address-format-private">Format für Privatpersonen:</label>
+                    <textarea id="address-format-private" v-model="addressFormats.private" class="input-field"
+                        rows="5"></textarea>
+                </div>
+            </div>
+            <div class="placeholder-info">
+                <strong>Verfügbare Platzhalter:</strong>
+                <ul>
+                    <li><code>{firmenname}</code></li>
+                    <li><code>{anrede}</code></li>
+                    <li><code>{titel}</code></li>
+                    <li><code>{vorname}</code></li>
+                    <li><code>{nachname}</code></li>
+                    <li><code>{name_komplett}</code> (Anrede, Titel, Vor- & Nachname)</li>
+                    <li><code>{strasse}</code></li>
+                    <li><code>{hausnummer}</code></li>
+                    <li><code>{plz}</code></li>
+                    <li><code>{ort}</code></li>
+                    <li><code>{land}</code></li>
+                </ul>
+            </div>
         </div>
+
         <div class="button-group option-actions">
-            <button type="button" @click="saveSenderAddress" class="button" :disabled="!hasAddressChanges">
-                Adresse speichern
+            <button type="button" @click="saveAddressFormats" class="button" :disabled="!hasAddressFormatChanges">
+                Adressformat speichern
             </button>
         </div>
-        <div v-if="addressSaveStatus"
-            :class="['save-status', { 'success': isAddressSuccess, 'error': !isAddressSuccess }]">
-            {[ addressSaveStatus ]}
+        <div v-if="addressFormatSaveStatus"
+            :class="['save-status', { 'success': isAddressFormatSuccess, 'error': !isAddressFormatSuccess }]">
+            {[ addressFormatSaveStatus ]}
         </div>
     </div>
+
+    <div class="card">
+        <h2>Live-Vorschau & Export-Anpassungen</h2>
+        <p>Passe hier das Aussehen der Adressaufkleber an.</p>
+        <div class="preview-grid">
+            <div class="preview-settings">
+                <div class="form-group">
+                    <label for="sender-address">Absenderzeile:</label>
+                    <input type="text" id="sender-address" v-model="senderAddress" class="input-field">
+                </div>
+
+                <div class="form-group">
+                    <label for="logo-upload">Logo hochladen (optional):</label>
+                    <input type="file" id="logo-upload" @change="handleLogoUpload" class="input-field"
+                        accept=".png,.jpg,.jpeg,.svg">
+                </div>
+
+                <hr>
+
+                <div class="form-group">
+                    <label for="sender-font-size">Schriftgröße Absender (pt):</label>
+                    <input type="number" id="sender-font-size" v-model.number="exportSettings.senderFontSize"
+                        class="input-field" min="5" max="12">
+                </div>
+
+                <div class="form-group">
+                    <label for="logo-size">Logo-Größe (mm):</label>
+                    <input type="number" id="logo-size" v-model.number="exportSettings.logoSize" class="input-field"
+                        min="4" max="15">
+                </div>
+
+                <div class="form-group">
+                    <label for="recipient-font-size">Schriftgröße Empfänger (pt):</label>
+                    <input type="number" id="recipient-font-size" v-model.number="exportSettings.recipientFontSize"
+                        class="input-field" min="8" max="14">
+                </div>
+
+                <hr>
+
+                <div class="form-group">
+                    <label for="sender-alignment">Ausrichtung Absender:</label>
+                    <select id="sender-alignment" v-model="exportSettings.senderAlignment" class="input-field">
+                        <option value="L">Linksbündig</option>
+                        <option value="C">Zentriert</option>
+                        <option value="R">Rechtsbündig</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="recipient-alignment">Ausrichtung Empfänger:</label>
+                    <select id="recipient-alignment" v-model="exportSettings.recipientAlignment" class="input-field">
+                        <option value="L">Linksbündig</option>
+                        <option value="C">Zentriert</option>
+                        <option value="R">Rechtsbündig</option>
+                    </select>
+                </div>
+
+                <div class="button-group option-actions">
+                    <button type="button" @click="saveExportSettings" class="button"
+                        :disabled="!hasExportSettingsChanges">
+                        Layout speichern
+                    </button>
+                </div>
+                <div v-if="exportSettingsSaveStatus"
+                    :class="['save-status', { 'success': isExportSettingsSuccess, 'error': !isExportSettingsSuccess }]">
+                    {[ exportSettingsSaveStatus ]}
+                </div>
+            </div>
+
+            <div class="preview-area">
+                <strong class="preview-title">Vorschau A4-Bogen</strong>
+                <div class="a4-page-container">
+                    <div class="a4-page-preview">
+                        <div class="label-preview" v-for="n in 12" :key="n" :style="{
+                                 top: (4.5 + Math.floor((n - 1) / 2) * 48) + 'mm',
+                                 left: (((n - 1) % 2) * 105) + 'mm'
+                             }">
+                            <div class="label-sender-line">
+                                <span :style="{ 
+                                    fontSize: exportSettings.senderFontSize + 'pt', 
+                                    textAlign: exportSettings.senderAlignment === 'C' ? 'center' : (exportSettings.senderAlignment === 'R' ? 'right' : 'left')
+                                }">{[ senderAddress ]}</span>
+                                <img v-if="currentLogoUrl" :src="currentLogoUrl" alt="Logo"
+                                    :style="{ height: exportSettings.logoSize + 'mm' }">
+                            </div>
+                            <hr class="label-divider">
+                            <div class="label-recipient-block" :style="{ 
+                                     fontSize: exportSettings.recipientFontSize + 'pt',
+                                     textAlign: exportSettings.recipientAlignment === 'C' ? 'center' : (exportSettings.recipientAlignment === 'R' ? 'right' : 'left')
+                                 }" v-html="previewAddressBlock">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <div id="selection-options-app" class="card">
         <h2>Globale Auswahloptionen</h2>
@@ -73,7 +199,6 @@
             {[ saveStatus ]}
         </div>
     </div>
-
 </div>
 
 <div class="card">
@@ -101,4 +226,112 @@
 {% block scripts %}
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+<style>
+    /* Grid-Layouts */
+    .preview-grid,
+    .address-format-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-top: 1.5rem;
+        align-items: flex-start;
+    }
+
+    .preview-area {
+        background-color: var(--bg-main);
+        border-radius: 8px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .preview-title {
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+    }
+
+    .a4-page-container {
+        width: 100%;
+        max-width: 210mm;
+        aspect-ratio: 210 / 297;
+        position: relative;
+    }
+
+    .a4-page-preview {
+        position: absolute;
+        width: 210mm;
+        height: 297mm;
+        background-color: #fff;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.15);
+        border: 1px solid #ccc;
+        transform-origin: top left;
+        transform: scale(calc(100% / 210mm));
+    }
+
+    .label-preview {
+        position: absolute;
+        width: 105mm;
+        height: 48mm;
+        border: 1px solid #e0e0e0;
+        padding: 2mm 3mm;
+        font-family: Arial, sans-serif;
+        color: #000;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .label-sender-line {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1mm;
+        height: 10mm;
+        overflow: hidden;
+    }
+
+    .label-sender-line span {
+        flex-grow: 1;
+        line-height: 1.2;
+        word-wrap: break-word;
+    }
+
+    .label-sender-line img {
+        max-height: 100%;
+        width: auto;
+        flex-shrink: 0;
+    }
+
+    .label-divider {
+        border: none;
+        border-top: 0.5px solid #ccc;
+        margin: 1mm 0;
+    }
+
+    .label-recipient-block {
+        padding-top: 2mm;
+        line-height: 1.4;
+        word-wrap: break-word;
+    }
+
+    .placeholder-info {
+        background-color: var(--bg-main);
+        border-radius: 6px;
+        padding: 1.5rem;
+        font-size: 0.9em;
+    }
+
+    .placeholder-info ul {
+        padding-left: 20px;
+        margin-top: 0.5rem;
+    }
+
+    .placeholder-info code {
+        background-color: var(--border-color);
+        padding: 2px 5px;
+        border-radius: 4px;
+    }
+</style>
 {% endblock %}
