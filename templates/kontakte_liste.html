@@ -3,7 +3,7 @@
 {% block title %}Kontaktübersicht{% endblock %}
 
 {% block head_styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/kontakte.css', v='2.2') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/kontakte.css', v='2.3') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/filter.css', v='1.5') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/import_export.css', v='1.3') }}">
 {% endblock %}
@@ -93,12 +93,12 @@
                     <th class="checkbox-col sticky-col">
                         <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll">
                     </th>
+                    <th class="actions-col sticky-col">Aktionen</th>
                     <th v-for="eigenschaft in filteredEigenschaften" :key="eigenschaft.id"
                         @click="sortBy(eigenschaft.name)" class="sortable">
                         {[ eigenschaft.name ]}
                         <span v-if="sortColumn === eigenschaft.name">{[ sortDirection === 'asc' ? '▲' : '▼' ]}</span>
                     </th>
-                    <th class="actions-col sticky-col">Aktionen</th>
                 </tr>
             </thead>
             <tbody>
@@ -107,6 +107,30 @@
                     <td class="checkbox-col sticky-col">
                         <input type="checkbox" :checked="selectedKontakte.has(kontakt.id)"
                             @change="toggleSelection(kontakt.id)">
+                    </td>
+                    <td class="actions-col sticky-col">
+                        <div class="action-icon-group">
+                            <button v-if="!kontakt.validation.isComplete && !kontakt.validation_acknowledged"
+                                @click="toggleValidationAcknowledgement(kontakt.id)" class="icon-btn acknowledge-btn"
+                                title="Unvollständigkeit quittieren">
+                                ⚠️
+                            </button>
+                            <button v-if="!kontakt.validation.isComplete && kontakt.validation_acknowledged"
+                                @click="toggleValidationAcknowledgement(kontakt.id)" class="icon-btn unacknowledge-btn"
+                                title="Quittierung aufheben">
+                                ✔️
+                            </button>
+
+                            <a :href="'/kontakte/editor?kontakt_id=' + kontakt.id" class="icon-btn edit"
+                                title="Bearbeiten">
+                                <img src="{{ url_for('static', filename='img/icon_edit.svg') }}" alt="Bearbeiten">
+                            </a>
+                            <button type="button"
+                                @click="deleteKontakt(kontakt.id, kontakt.daten.Vorname + ' ' + kontakt.daten.Nachname)"
+                                class="icon-btn delete" title="Löschen">
+                                <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Löschen">
+                            </button>
+                        </div>
                     </td>
                     <td v-for="eigenschaft in filteredEigenschaften" :key="eigenschaft.id"
                         :class="{ 'invalid-field': !kontakt.validation_acknowledged && kontakt.validation.errors[eigenschaft.name] }"
@@ -143,31 +167,6 @@
                         </select>
                         <span v-else>{[ kontakt.daten[eigenschaft.name] ]}</span>
                     </td>
-                    <td class="actions-col sticky-col">
-                        <div class="actions">
-                            <button v-if="!kontakt.validation.isComplete && !kontakt.validation_acknowledged"
-                                @click="toggleValidationAcknowledgement(kontakt.id)" class="icon-btn acknowledge-btn"
-                                title="Unvollständigkeit quittieren">
-                                ⚠️
-                            </button>
-                            <button v-if="!kontakt.validation.isComplete && kontakt.validation_acknowledged"
-                                @click="toggleValidationAcknowledgement(kontakt.id)" class="icon-btn unacknowledge-btn"
-                                title="Quittierung aufheben">
-                                ✔️
-                            </button>
-
-                            <a :href="'/kontakte/editor?kontakt_id=' + kontakt.id" class="icon-btn edit"
-                                title="Bearbeiten">
-                                <img src="{{ url_for('static', filename='img/icon_edit.svg') }}" alt="Bearbeiten">
-                            </a>
-                            <form :action="'/kontakte/loeschen/' + kontakt.id" method="post"
-                                onsubmit="return confirm('Sicher?');">
-                                <button type="submit" class="icon-btn delete" title="Löschen">
-                                    <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Löschen">
-                                </button>
-                            </form>
-                        </div>
-                    </td>
                 </tr>
                 <tr v-if="sortedKontakte.length === 0">
                     <td :colspan="filteredEigenschaften.length + 3" class="no-results-cell">
@@ -195,13 +194,11 @@
                     </select>
                 </div>
                 <hr>
-
                 <div v-if="addModalVorlage" class="modal-form-columns">
                     <div v-for="gruppe in addModalVorlage.gruppen" :key="gruppe.id" class="form-group-box">
                         <h4 class="form-group-title">{[ gruppe.name ]}</h4>
                         <div v-for="e in gruppe.eigenschaften" :key="e.id" class="form-group">
                             <label :for="'new-contact-' + e.name">{[ e.name ]}:</label>
-
                             <select v-if="e.datentyp === 'Auswahl' && e.allow_multiselect" :id="'new-contact-' + e.name"
                                 v-model="newContactData[e.name]" class="input-field" multiple>
                                 <option v-for="option in e.optionen.split(',')" :key="option.trim()"
@@ -209,7 +206,6 @@
                                     {[ option.trim() ]}
                                 </option>
                             </select>
-
                             <select v-else-if="e.datentyp === 'Auswahl'" :id="'new-contact-' + e.name"
                                 v-model="newContactData[e.name]" class="input-field">
                                 <option value="">-- Bitte wählen --</option>
@@ -218,13 +214,10 @@
                                     {[ option.trim() ]}
                                 </option>
                             </select>
-
                             <input v-else-if="e.datentyp === 'Datum'" :id="'new-contact-' + e.name" type="date"
                                 v-model="newContactData[e.name]" class="input-field">
-
                             <input v-else-if="e.name === 'Vorname'" :id="'new-contact-' + e.name" type="text"
                                 v-model="newContactData[e.name]" class="input-field" @change="handleVornameChange">
-
                             <input v-else :id="'new-contact-' + e.name" type="text" v-model="newContactData[e.name]"
                                 class="input-field">
                         </div>
@@ -258,17 +251,13 @@
                             :disabled="!importTargetVorlageId || isUploading" multiple
                             accept=".csv,.msg,.oft,.txt,.vcf,.xlsx">
                     </div>
-
                     <div v-if="isUploading" class="progress-container">
                         <div class="progress-bar" :style="{ width: uploadProgress + '%' }"></div>
                         <span class="progress-text">{[ uploadStatus ]}</span>
                     </div>
-
                     <div v-if="importError" class="alert-danger">{[ importError ]}</div>
                 </div>
-
                 <div v-if="importStep === 2 && importTargetVorlage">
-
                     <div v-if="!isFinalMappingStep">
                         <p>
                             Bitte ordne die Felder für die Gruppe <strong>"{[ currentMappingGroup.name ]}"</strong> zu.
@@ -286,15 +275,13 @@
                                     <select :ref="el => { tomSelectRefs[prop.name] = el }"
                                         v-model="importMappings[prop.name]">
                                         <option value="">-- Ignorieren --</option>
-                                        <option v-for="header in importData.headers" :key="header" :value="header">
-                                            {[ header ]}
-                                        </option>
+                                        <option v-for="header in importData.headers" :key="header" :value="header">{[
+                                            header ]}</option>
                                     </select>
                                 </div>
                             </template>
                         </div>
                     </div>
-
                     <div v-if="isFinalMappingStep">
                         <p>
                             Bitte überprüfe die gesamte Zuordnung vor dem Abschluss.
@@ -320,8 +307,7 @@
                                             v-model="importMappings[prop.name]">
                                             <option value="">-- Ignorieren --</option>
                                             <option v-for="header in importData.headers" :key="header" :value="header">
-                                                {[ header ]}
-                                            </option>
+                                                {[ header ]}</option>
                                         </select>
                                     </div>
                                 </template>
@@ -331,7 +317,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div v-if="importError" class="alert-danger error-margin-top">{[ importError ]}</div>
                 </div>
             </div>

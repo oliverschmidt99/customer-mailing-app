@@ -31,7 +31,7 @@ def auflisten():
                 {
                     "id": k.id,
                     "daten": k.get_data(),
-                    "validation_acknowledged": k.validation_acknowledged,  # Hinzugefügt
+                    "validation_acknowledged": k.validation_acknowledged,
                 }
                 for k in v.kontakte
             ],
@@ -180,9 +180,10 @@ def search_kontakte():
 
 @bp.route("/loeschen/<int:kontakt_id>", methods=["POST"])
 def loeschen(kontakt_id):
-    """Löscht einen Kontakt."""
+    """Löscht einen Kontakt und gibt eine JSON-Antwort zurück."""
     kontakt = db.session.get(Kontakt, kontakt_id)
     if kontakt:
         db.session.delete(kontakt)
         db.session.commit()
-    return redirect(url_for("kontakte.auflisten"))
+        return jsonify({"success": True, "message": "Kontakt gelöscht."})
+    return jsonify({"success": False, "error": "Kontakt nicht gefunden."}), 404

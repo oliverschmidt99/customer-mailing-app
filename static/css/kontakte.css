@@ -194,6 +194,16 @@ tr.incomplete-row {
     font-style: italic;
 }
 
+.actions-col {
+    width: 150px; /* Gibt der Spalte eine feste Breite für die Icons */
+}
+
+.action-icon-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
 
 /* NEUE STILE FÜR KONTAKT-EDITOR */
 

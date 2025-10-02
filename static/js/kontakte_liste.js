@@ -65,7 +65,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const errors = {};
         let isComplete = true;
 
-        // Prüfung auf Vollständigkeit
         const requiredFields = [
           "Anrede",
           "Vorname",
@@ -82,7 +81,6 @@ document.addEventListener("DOMContentLoaded", () => {
             isComplete = false;
           }
         }
-        // Firmenname ist nur "alternativ" erforderlich
         if (
           (!kontakt.daten["Firmenname"] ||
             String(kontakt.daten["Firmenname"]).trim() === "") &&
@@ -93,7 +91,6 @@ document.addEventListener("DOMContentLoaded", () => {
           isComplete = false;
         }
 
-        // Prüfung auf Zahlen
         const numericFields = ["PLZ", "Hausnummer"];
         for (const field of numericFields) {
           const value = kontakt.daten[field];
@@ -315,6 +312,33 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       // --- Methoden ---
+      const deleteKontakt = async (kontaktId, kontaktName) => {
+        const displayName = (kontaktName || `Kontakt ID: ${kontaktId}`).trim();
+        if (
+          confirm(`Möchtest du "${displayName}" wirklich endgültig löschen?`)
+        ) {
+          try {
+            const response = await fetch(`/kontakte/loeschen/${kontaktId}`, {
+              method: "POST",
+            });
+            const result = await response.json();
+            if (result.success) {
+              const index = activeVorlage.value.kontakte.findIndex(
+                (k) => k.id === kontaktId
+              );
+              if (index > -1) {
+                activeVorlage.value.kontakte.splice(index, 1);
+              }
+              selectedKontakte.value.delete(kontaktId);
+            } else {
+              throw new Error(result.error || "Unbekannter Fehler");
+            }
+          } catch (error) {
+            alert(`Löschen fehlgeschlagen: ${error.message}`);
+          }
+        }
+      };
+
       const toggleValidationAcknowledgement = async (kontaktId) => {
         const kontakt = activeVorlage.value.kontakte.find(
           (k) => k.id === kontaktId
@@ -846,6 +870,7 @@ document.addEventListener("DOMContentLoaded", () => {
         searchQuery,
         showIncompleteFirst,
         toggleValidationAcknowledgement,
+        deleteKontakt,
       };
     },
   });
