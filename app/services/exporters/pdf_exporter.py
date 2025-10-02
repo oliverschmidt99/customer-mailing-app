@@ -6,7 +6,7 @@ from ... import (
     get_config,
 )
 
-# KORREKTUR: Konstanten exakt nach deinen Vorgaben
+# Konstanten exakt nach deinen Vorgaben
 LABEL_WIDTH = 105
 LABEL_HEIGHT = 48
 LABELS_PER_ROW = 2
@@ -21,10 +21,15 @@ def _get_formatted_name(daten):
     """
     Formatiert den vollständigen Namen inklusive korrekt sortierter akademischer Titel.
     """
-    titel_str = daten.get("Titel (akademisch)", daten.get("Titel", ""))
-    anrede = daten.get("Anrede", "")
-    vorname = daten.get("Vorname", "")
-    nachname = daten.get("Nachname", "")
+
+    def get_clean(key):
+        val = daten.get(key)
+        return str(val).strip() if val and str(val).strip().lower() != "none" else ""
+
+    titel_str = get_clean("Titel (akademisch)") or get_clean("Titel")
+    anrede = get_clean("Anrede")
+    vorname = get_clean("Vorname")
+    nachname = get_clean("Nachname")
 
     name_parts = [anrede, titel_str, vorname, nachname]
     return " ".join(filter(None, name_parts)).strip()
@@ -33,27 +38,34 @@ def _get_formatted_name(daten):
 def _build_address_block(template, daten):
     """Ersetzt Platzhalter in einer Vorlage mit Kontaktdaten."""
 
+    def get_clean(key):
+        val = daten.get(key)
+        return str(val).strip() if val and str(val).strip().lower() != "none" else ""
+
     placeholders = {
-        "{firmenname}": daten.get("Firmenname", ""),
-        "{anrede}": daten.get("Anrede", ""),
-        "{titel}": daten.get("Titel (akademisch)", daten.get("Titel", "")),
-        "{vorname}": daten.get("Vorname", ""),
-        "{nachname}": daten.get("Nachname", ""),
+        "{firmenname}": get_clean("Firmenname"),
+        "{anrede}": get_clean("Anrede"),
+        "{titel}": get_clean("Titel (akademisch)") or get_clean("Titel"),
+        "{vorname}": get_clean("Vorname"),
+        "{nachname}": get_clean("Nachname"),
         "{name_komplett}": _get_formatted_name(daten),
-        "{strasse}": daten.get("Straße", ""),
-        "{hausnummer}": daten.get("Hausnummer", ""),
-        "{plz}": daten.get("Postleitzahl", ""),
-        "{ort}": daten.get("Ort", ""),
-        "{land}": daten.get("Land", ""),
+        "{strasse}": get_clean("Straße"),
+        "{hausnummer}": get_clean("Hausnummer"),
+        "{plz}": get_clean("Postleitzahl"),
+        "{ort}": get_clean("Ort"),
+        "{land}": get_clean("Land"),
     }
 
     address_block = template
     for key, value in placeholders.items():
-        address_block = address_block.replace(key, str(value))
+        address_block = address_block.replace(key, value)
 
-    return "\n".join(
-        line.strip() for line in address_block.splitlines() if line.strip()
-    )
+    cleaned_lines = []
+    for line in address_block.splitlines():
+        cleaned_line = " ".join(line.split())
+        if cleaned_line:
+            cleaned_lines.append(cleaned_line)
+    return "\n".join(cleaned_lines)
 
 
 def generate_labels_pdf(kontakte):
@@ -69,7 +81,6 @@ def generate_labels_pdf(kontakte):
     logo_size = config.get("export_logo_size", 8)
     recipient_font_size = config.get("export_recipient_font_size", 10)
 
-    # Lade Ausrichtungs-Einstellungen (L, C, R)
     sender_align = config.get("export_sender_alignment", "L")
     recipient_align = config.get("export_recipient_alignment", "L")
 
@@ -83,6 +94,12 @@ def generate_labels_pdf(kontakte):
 
         row = label_count // LABELS_PER_ROW
         col = label_count % LABELS_PER_ROW
+
+        if row >= LABELS_PER_COL:
+            pdf.add_page()
+            label_count = 0
+            row, col = 0, 0
+
         x = MARGIN_LEFT + col * (LABEL_WIDTH + H_SPACING)
         y = MARGIN_TOP + row * (LABEL_HEIGHT + V_SPACING)
 
@@ -92,11 +109,19 @@ def generate_labels_pdf(kontakte):
 
         if logo_exists:
             text_width = LABEL_WIDTH - logo_size - 6
-            pdf.set_xy(sender_x, sender_y)
+
+            # KORREKTUR: Berechne einen Y-Offset, um den Text vertikal zu zentrieren.
+            # Annahme: Die Höhe des einzeiligen Textes ist ca. 3mm.
+            # Dies ist eine Annäherung, die für die meisten Logos gut funktioniert.
+            text_y_offset = (logo_size / 2) - (3 / 2)
+            if text_y_offset < 0:
+                text_y_offset = 0  # Verhindert, dass der Text nach oben rutscht
+
+            pdf.set_xy(sender_x, sender_y + text_y_offset)
             pdf.multi_cell(w=text_width, h=3, text=safe_sender, align=sender_align)
 
             logo_x = x + LABEL_WIDTH - logo_size - 3
-            pdf.image(logo_path, x=logo_x, y=sender_y, h=logo_size)
+            pdf.image(logo_path, x=logo_x, y=sender_y, w=logo_size)
         else:
             pdf.set_xy(sender_x, sender_y)
             pdf.multi_cell(w=LABEL_WIDTH - 6, h=3, text=safe_sender, align=sender_align)
@@ -107,16 +132,18 @@ def generate_labels_pdf(kontakte):
 
         pdf.set_font("Arial", size=recipient_font_size)
 
-        template = (
-            config.get("address_format_company")
-            if daten.get("Firmenname")
-            else config.get("address_format_private")
-        )
-        if not template:  # Fallback
-            template = (
-                "{firmenname}\nz. Hd. {name_komplett}\n{strasse} {hausnummer}\n{plz} {ort}"
-                if daten.get("Firmenname")
-                else "{name_komplett}\n{strasse} {hausnummer}\n{plz} {ort}"
+        if (
+            daten.get("Firmenname")
+            and str(daten.get("Firmenname")).strip().lower() != "none"
+        ):
+            template = config.get(
+                "address_format_company",
+                "{firmenname}\nz. Hd. {name_komplett}\n{strasse} {hausnummer}\n{plz} {ort}",
+            )
+        else:
+            template = config.get(
+                "address_format_private",
+                "{name_komplett}\n{strasse} {hausnummer}\n{plz} {ort}",
             )
 
         address_block = _build_address_block(template, daten)
@@ -130,9 +157,6 @@ def generate_labels_pdf(kontakte):
         )
 
         label_count += 1
-        if label_count >= LABELS_PER_ROW * LABELS_PER_COL:
-            pdf.add_page()
-            label_count = 0
 
     return bytes(pdf.output())
 
@@ -146,10 +170,8 @@ def generate_pdf(kontakte, vorlage_struktur):
 
     for kontakt in kontakte:
         pdf.add_page()
-
         daten = kontakt["daten"]
         full_name = _get_formatted_name(daten) or daten.get("Firmenname", "")
-
         pdf.set_font("Arial", "B", 16)
         safe_full_name = full_name.encode("latin-1", "replace").decode("latin-1")
         pdf.cell(0, 10, safe_full_name, ln=True, align="L")
@@ -176,21 +198,19 @@ def generate_pdf(kontakte, vorlage_struktur):
                     prop_name = eigenschaft["name"]
                     prop_value = str(daten.get(prop_name, ""))
 
-                    if prop_value:
+                    if prop_value and prop_value.lower() != "none":
                         start_x = pdf.get_x()
                         pdf.set_font("Arial", "B", 10)
                         safe_prop_name = prop_name.encode("latin-1", "replace").decode(
                             "latin-1"
                         )
                         pdf.cell(60, 8, safe_prop_name, align="L")
-
                         pdf.set_font("Arial", "", 10)
                         safe_prop_value = prop_value.encode(
                             "latin-1", "replace"
                         ).decode("latin-1")
                         value_width = pdf.w - pdf.l_margin - pdf.r_margin - 60
                         pdf.multi_cell(value_width, 8, safe_prop_value, align="L")
-
                         pdf.set_x(start_x)
                         pdf.ln(5)
                 pdf.ln(5)

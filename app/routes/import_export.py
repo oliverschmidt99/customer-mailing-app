@@ -39,23 +39,14 @@ def process_files_task(task_id: str, file_paths: List[Dict[str, str]]):
         filepath = file_info["path"]
 
         try:
-            result = importer_service.import_file_from_path(filepath)
-            if isinstance(result, dict) and "error" in result:
-                error_list.append({"filename": filename, "error": result["error"]})
+            data = importer_service.import_file_from_path(filepath)
+            if isinstance(data, dict) and "error" in data:
+                error_list.append({"filename": filename, "error": data["error"]})
             else:
-                parsed_data, raw_content = result
-                for record in parsed_data:
-                    all_records.append({"parsed": record, "raw": raw_content})
-
+                all_records.extend(data)
         except (IOError, ValueError) as e:
-            current_app.logger.error(
-                f"Fehler bei der Verarbeitung von Datei {filename}: {e}", exc_info=True
-            )
             error_list.append(
-                {
-                    "filename": filename,
-                    "error": f"Systemfehler beim Parsen der Datei: {e}",
-                }
+                {"filename": filename, "error": f"Systemfehler: {str(e)}"}
             )
         finally:
             if os.path.exists(filepath):
@@ -63,12 +54,12 @@ def process_files_task(task_id: str, file_paths: List[Dict[str, str]]):
 
         task_progress[task_id]["progress"] = i + 1
 
-    all_headers = set(key for record in all_records for key in record["parsed"].keys())
+    all_headers = set(key for record in all_records for key in record.keys())
 
     task_progress[task_id]["status"] = "complete"
     task_progress[task_id]["result"] = {
         "headers": list(all_headers),
-        "preview_data": [r["parsed"] for r in all_records[:5]],
+        "preview_data": all_records[:5],
         "original_data": all_records,
         "errors": error_list,
     }
@@ -116,7 +107,7 @@ def get_import_status(task_id: str):
 
     if progress["status"] == "complete":
         result_data = progress["result"]
-        task_progress.pop(task_id, None)
+        task_progress.pop(task_id, None)  # Sicher entfernen
         return jsonify({"status": "complete", "data": result_data})
 
     return jsonify(progress)
@@ -140,19 +131,15 @@ def finalize_import():
         return jsonify({"success": False, "error": "Vorlage nicht gefunden."}), 404
 
     count = 0
-    for row_data in original_data:
-        parsed_row = row_data["parsed"]
-        raw_content = row_data["raw"]
-
+    for row in original_data:
         new_kontakt_data = {
-            vorlage_prop: parsed_row.get(import_header)
+            vorlage_prop: row.get(import_header)
             for import_header, vorlage_prop in mappings.items()
             if vorlage_prop
         }
         if new_kontakt_data:
             kontakt = Kontakt(vorlage_id=vorlage_id)
             kontakt.set_data(new_kontakt_data)
-            kontakt.import_raw_content = raw_content
             db.session.add(kontakt)
             count += 1
 
@@ -164,7 +151,7 @@ def finalize_import():
 @bp.route("/export/<int:vorlage_id>/<string:file_format>")
 def export_data(
     vorlage_id: int, file_format: str
-) -> Union[Tuple[Response, int], Response]:
+) -> Union[Response, tuple]:  # Korrigierte Typ-Annotation
     """
     Exportiert die Kontaktdaten einer Vorlage im angegebenen Format.
     """
@@ -193,7 +180,7 @@ def export_data(
     if not content:
         return "Ungültiges Export-Format", 400
 
-    filename = f"{vorlage_model.name}_export_{datetime.now().strftime('%Y-%m-%d')}.{file_format}"
+    filename = f"{vorlage_model.name}_export_{datetime.now().strftime('%Y-%m-%d')}.{file_format.split('-')[0]}"  # Sicherer Dateiname
 
     return Response(
         content,

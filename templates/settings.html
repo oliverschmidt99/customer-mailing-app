@@ -47,7 +47,7 @@
                     <li><code>{titel}</code></li>
                     <li><code>{vorname}</code></li>
                     <li><code>{nachname}</code></li>
-                    <li><code>{name_komplett}</code> (Anrede, Titel, Vor- & Nachname)</li>
+                    <li><code>{name_komplett}</code> (Anrede, Titel, Vor- &amp; Nachname)</li>
                     <li><code>{strasse}</code></li>
                     <li><code>{hausnummer}</code></li>
                     <li><code>{plz}</code></li>
@@ -69,7 +69,7 @@
     </div>
 
     <div class="card">
-        <h2>Live-Vorschau & Export-Anpassungen</h2>
+        <h2>Live-Vorschau &amp; Export-Anpassungen</h2>
         <p>Passe hier das Aussehen der Adressaufkleber an.</p>
         <div class="preview-grid">
             <div class="preview-settings">
@@ -93,9 +93,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="logo-size">Logo-Größe (mm):</label>
+                    <label for="logo-size">Logo-Breite (mm):</label>
                     <input type="number" id="logo-size" v-model.number="exportSettings.logoSize" class="input-field"
-                        min="4" max="15">
+                        min="4" max="25">
                 </div>
 
                 <div class="form-group">
@@ -150,7 +150,7 @@
                                     textAlign: exportSettings.senderAlignment === 'C' ? 'center' : (exportSettings.senderAlignment === 'R' ? 'right' : 'left')
                                 }">{[ senderAddress ]}</span>
                                 <img v-if="currentLogoUrl" :src="currentLogoUrl" alt="Logo"
-                                    :style="{ height: exportSettings.logoSize + 'mm' }">
+                                    :style="{ width: exportSettings.logoSize + 'mm', height: 'auto' }">
                             </div>
                             <hr class="label-divider">
                             <div class="label-recipient-block" :style="{ 
@@ -181,14 +181,14 @@
                     placeholder="z.B. Herr, Frau, Divers"></textarea>
             </div>
             <button type="button" @click="removeOption(index)" class="button danger small">
-                <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Löschen">
+                <img :src="'{{ url_for('static', filename='img/icon_delete.svg') }}'" alt="Löschen">
                 Liste entfernen
             </button>
         </div>
 
         <div class="button-group option-actions">
             <button type="button" @click="addOption" class="button secondary">
-                <img src="{{ url_for('static', filename='img/icon_plus.svg') }}" alt="Hinzufügen">
+                <img :src="'{{ url_for('static', filename='img/icon_plus.svg') }}'" alt="Hinzufügen">
                 Neue Liste hinzufügen
             </button>
             <button type="button" @click="saveOptions" class="button" :disabled="!hasChanges">
