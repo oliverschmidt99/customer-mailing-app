@@ -1,187 +1,72 @@
 <!DOCTYPE html>
 {% extends "base.html" %}
-{% block title %}Vorlagen-Editor{% endblock %}
+{% block title %}{% if kontakt %}Kontakt bearbeiten{% else %}Neuer Kontakt{% endif %}{% endblock %}
 
 {% block head_styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/vorlage_editor.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/kontakte.css') }}">
 {% endblock %}
 
 {% block content %}
-<div id="vorlage-editor-app">
+<form method="post" action="{{ action_url }}">
     <div class="actions-header">
-        <h1>{[ pageTitle ]}</h1>
+        <h1>{% if kontakt %}{{ kontakt_daten_for_template.get('Name') or kontakt_daten_for_template.get('Firmenname') or
+            'Kontakt bearbeiten' }}{% else %}Neuen Kontakt erstellen{% endif %}</h1>
         <div class="button-group">
-            <a href="{{ url_for('vorlagen.verwalten') }}" class="button secondary">Abbrechen</a>
-            <button type="button" @click="handleSave" class="button">Vorlage Speichern</button>
+            <a href="{{ url_for('kontakte.auflisten') }}" class="button secondary">Abbrechen</a>
+            <button type="submit" class="button">Speichern</button>
         </div>
     </div>
 
-    <div class="form-group">
-        <label for="vorlage-name">Name der Vorlage:</label>
-        <input type="text" id="vorlage-name" v-model="vorlage.name" class="input-field" :disabled="vorlage.is_standard">
-        <small v-if="vorlage.is_standard" class="template-notice">Standardvorlagen können nicht direkt
-            geändert werden. Änderungen werden als neue Vorlage gespeichert.</small>
-    </div>
+    <div class="modal-form-columns">
+        {% for gruppe in vorlage_for_template.gruppen %}
+        <div class="form-group-box">
+            <h4 class="form-group-title">{{ gruppe.name }}</h4>
+            {% for eigenschaft in gruppe.eigenschaften %}
+            <div class="form-group">
+                <label for="new-contact-{{ eigenschaft.name }}">{{ eigenschaft.name }}:</label>
 
-    <div class="add-group-bar">
-        <select v-model="selectedSuggestionCategory" class="input-field">
-            <option :value="null">Gruppe aus Vorschlag wählen...</option>
-            <option v-for="cat in suggestions.categories" :key="cat.name" :value="cat">{[ cat.name ]}</option>
-        </select>
-        <button type="button" @click="addGroupFromSuggestion" class="button">Hinzufügen</button>
-        <button type="button" @click="addEmptyGruppe" class="button secondary">Leere Gruppe</button>
-    </div>
-
-    <div class="view-switcher">
-        <button type="button" @click="viewMode = 'list'" :class="{ active: viewMode === 'list' }">Listenansicht</button>
-        <button type="button" @click="viewMode = 'tile'" :class="{ active: viewMode === 'tile' }">Kachelansicht</button>
-    </div>
-
-    <div v-if="viewMode === 'list'" class="view-actions">
-        <button type="button" @click="expandAll" class="button secondary">Alles Auffalten</button>
-        <button type="button" @click="collapseAll" class="button secondary">Alles Zuklappen</button>
-    </div>
-
-    <div v-if="viewMode === 'list'" id="group-list-container" class="list-view-container">
-        <div v-for="(gruppe, index) in vorlage.gruppen" :key="index" class="group-list-item">
-            <div class="list-item-header">
-                <span class="drag-handle">☰</span>
-                <span @click="toggleGroupCollapse(index)"
-                    :class="['toggle-icon', { collapsed: collapsedGroups[index] }]">▼</span>
-                <h3 @click="toggleGroupCollapse(index)" class="group-name-clickable">{[ gruppe.name ]}</h3>
-                <div class="tile-actions">
-                    <button type="button" @click="openGroupEditModal(index)" class="button edit">Bearbeiten</button>
-                    <button type="button" @click="removeGruppe(index)" class="button danger">Löschen</button>
-                </div>
+                {% if eigenschaft.datentyp == 'Auswahl' %}
+                <select id="new-contact-{{ eigenschaft.name }}" name="attribute_value_{{ eigenschaft.name }}"
+                    class="input-field">
+                    <option value="">-- Bitte wählen --</option>
+                    {% for option in eigenschaft.optionen.split(',') %}
+                    <option value="{{ option.strip() }}" {% if
+                        kontakt_daten_for_template.get(eigenschaft.name)==option.strip() %}selected{% endif %}>
+                        {{ option.strip() }}
+                    </option>
+                    {% endfor %}
+                </select>
+                {% elif eigenschaft.datentyp == 'Datum' %}
+                <input id="new-contact-{{ eigenschaft.name }}" type="date" name="attribute_value_{{ eigenschaft.name }}"
+                    value="{{ kontakt_daten_for_template.get(eigenschaft.name, '') }}" class="input-field">
+                {% else %}
+                <input id="new-contact-{{ eigenschaft.name }}" type="text" name="attribute_value_{{ eigenschaft.name }}"
+                    value="{{ kontakt_daten_for_template.get(eigenschaft.name, '') }}" class="input-field">
+                {% endif %}
+                <input type="hidden" name="attribute_key_{{ eigenschaft.name }}" value="{{ eigenschaft.name }}">
             </div>
-            <div v-show="!collapsedGroups[index]">
-                <div v-if="gruppe.eigenschaften.length > 0" class="property-list-container" :data-group-index="index">
-                    <div v-for="(eigenschaft, propIndex) in gruppe.eigenschaften" :key="propIndex"
-                        class="property-list-item">
-                        <span class="drag-handle">☰</span>
-                        <span class="property-name">{[ eigenschaft.name ]}</span>
-                        <span class="property-type-badge">{[ eigenschaft.datentyp ]}</span>
-                    </div>
-                </div>
-                <p v-else class="empty-properties-info">Keine Eigenschaften in dieser Gruppe.</p>
+            {% endfor %}
+        </div>
+        {% endfor %}
+
+        {% if kontakt and kontakt.import_raw_content %}
+        <div class="form-group-box">
+            <h4 class="form-group-title">Import-Rohdaten</h4>
+            <div class="form-group">
+                <label for="raw-import-content">Ursprünglicher Datei-Inhalt:</label>
+                <textarea id="raw-import-content" class="input-field" rows="10"
+                    readonly>{{ kontakt.import_raw_content }}</textarea>
             </div>
         </div>
+        {% endif %}
     </div>
+</form>
 
-    <div v-if="viewMode === 'tile'" class="tile-view-container">
-        <div v-for="(gruppe, index) in vorlage.gruppen" :key="index" class="group-tile">
-            <div class="tile-header">
-                <h3>{[ gruppe.name ]}</h3>
-                <div class="tile-actions">
-                    <button type="button" @click="openGroupEditModal(index)" class="icon-btn edit" title="Bearbeiten">
-                        <img src="{{ url_for('static', filename='img/icon_edit.svg') }}" alt="Bearbeiten">
-                    </button>
-                    <button type="button" @click="removeGruppe(index)" class="icon-btn delete" title="Löschen">
-                        <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Löschen">
-                    </button>
-                </div>
-            </div>
-            <div class="tile-content">
-                <span v-for="(eigenschaft, propIndex) in gruppe.eigenschaften" :key="propIndex"
-                    class="tile-property-badge">
-                    {[ eigenschaft.name ]}
-                </span>
-                <span v-if="gruppe.eigenschaften.length === 0" class="empty-group-info">
-                    Leere Gruppe
-                </span>
-            </div>
-        </div>
-    </div>
+<script type="application/json" id="vorlage-for-json-data">{{ vorlage_for_json|safe }}</script>
+<script type="application/json" id="kontakt-daten-for-json-data">{{ kontakt_daten_for_json|safe }}</script>
 
-
-    <div v-if="activeModal === 'groupEdit'" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Gruppe bearbeiten: <span class="group-name-italic">{[ editedGroup.name ]}</span></h2>
-                <button type="button" @click="closeModal" class="modal-close-btn" title="Schließen">&times;</button>
-            </div>
-            <div class="modal-body" v-if="editedGroup">
-                <div class="form-group">
-                    <label for="group-name-edit">Gruppenname</label>
-                    <input id="group-name-edit" type="text" v-model="editedGroup.name" class="input-field">
-                </div>
-                <hr>
-                <h4>Eigenschaften:</h4>
-                <div v-for="(prop, propIndex) in editedGroup.eigenschaften" :key="propIndex"
-                    class="modal-property-item">
-                    <div class="modal-property-row">
-                        <input type="text" v-model="prop.name" placeholder="Name der Eigenschaft" class="input-field">
-                        <select v-model="prop.datentyp" class="input-field">
-                            <option value="Text">Text</option>
-                            <option value="Datum">Datum</option>
-                            <option value="Auswahl">Auswahl</option>
-                            <option value="Verknüpfung">Verknüpfung</option>
-                        </select>
-                        <input type="text" v-if="prop.datentyp !== 'Auswahl'" v-model="prop.optionen"
-                            placeholder="Optionen (z.B. für Verknüpfung)" class="input-field">
-                        <button type="button" @click="removeEigenschaft(propIndex)" class="icon-btn delete">
-                            <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Entfernen">
-                        </button>
-                    </div>
-                    <div v-if="prop.datentyp === 'Auswahl'" class="modal-property-row-secondary">
-                        <label for="global-options">Globale Liste nutzen</label>
-                        <select id="global-options" @change="applyGlobalOption($event, propIndex)" class="input-field">
-                            <option value="">-- Globale Liste wählen --</option>
-                            <option v-for="(values, name) in selectionOptions" :key="name" :value="name">{[ name ]}
-                            </option>
-                        </select>
-                        <label for="options-text">Optionen (kommagetrennt)</label>
-                        <textarea id="options-text" v-model="prop.optionen"
-                            placeholder="z.B. Option A, Option B, Option C" class="input-field" rows="2"></textarea>
-                    </div>
-                </div>
-                <button type="button" @click="addEigenschaft" class="button secondary add-property-button">
-                    <img src="{{ url_for('static', filename='img/icon_plus.svg') }}" alt="Hinzufügen">
-                    Eigenschaft hinzufügen
-                </button>
-            </div>
-            <div class="modal-actions">
-                <button type="button" @click="closeModal" class="button secondary">Abbrechen</button>
-                <button type="button" @click="saveGroup" class="button">Speichern</button>
-            </div>
-        </div>
-    </div>
-
-    <div v-if="isSaveAsModalOpen" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Als neue Vorlage speichern</h2>
-                <button type="button" @click="isSaveAsModalOpen = false" class="modal-close-btn"
-                    title="Schließen">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="new-vorlage-name">Name der neuen Vorlage:</label>
-                    <input type="text" id="new-vorlage-name" v-model="newVorlageName" class="input-field">
-                </div>
-                <div v-if="allVorlagen.some(v => v.name === newVorlageName)" class="error-text">
-                    Eine Vorlage mit diesem Namen existiert bereits.
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button type="button" @click="isSaveAsModalOpen = false" class="button secondary">Abbrechen</button>
-                <button type="button" @click="saveAsNewVorlage" class="button"
-                    :disabled="!newVorlageName || allVorlagen.some(v => v.name === newVorlageName)">
-                    Speichern
-                </button>
-            </div>
-        </div>
-    </div>
-
-</div>
-
-<script type="application/json" id="vorlage-data">{{ vorlage_data|safe }}</script>
-<script type="application/json" id="action-url-data">{{ action_url|tojson }}</script>
-<script type="application/json" id="all-vorlagen-data">{{ all_vorlagen_data|safe }}</script>
-<script type="application/json" id="selection-options-data">{{ selection_options_data|tojson|safe }}</script>
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="{{ url_for('static', filename='js/vorlage_editor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/kontakt_editor.js') }}"></script>
 {% endblock %}

@@ -1,7 +1,7 @@
 # app/services/importer_service.py
 """This service handles the file import logic."""
 import os
-from typing import Dict, Any, List, Union
+from typing import Dict, Any, List, Union, Tuple
 
 from flask import current_app
 from .importers import csv_importer, msg_importer, vcf_importer, xlsx_importer
@@ -9,16 +9,16 @@ from .importers import csv_importer, msg_importer, vcf_importer, xlsx_importer
 
 def import_file_from_path(
     file_path: str,
-) -> Union[List[Dict[str, Any]], Dict[str, str]]:
+) -> Union[Tuple[List[Dict[str, Any]], str], Dict[str, str]]:
     """
     Erkennt den Dateityp eines existierenden Pfades und ruft den entsprechenden Parser auf.
-    Diese Funktion ist für die Hintergrundverarbeitung gedacht.
+    Gibt die geparsten Daten und den rohen Inhalt zurück.
 
     Args:
         file_path: Der vollständige Pfad zur zu importierenden Datei.
 
     Returns:
-        Eine Liste von Kontaktdaten-Dictionaries oder ein Fehler-Dictionary.
+        Ein Tupel (Liste von Kontakten, Rohdaten-String) oder ein Fehler-Dictionary.
     """
     filename = os.path.basename(file_path)
     file_ext = os.path.splitext(filename)[1].lower()

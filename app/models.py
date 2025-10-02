@@ -65,6 +65,9 @@ class Kontakt(db.Model):
     vorlage_id = db.Column(db.Integer, db.ForeignKey("vorlage.id"), nullable=False)
     daten = db.Column(db.Text, nullable=False, default="{}")
 
+    # NEUES FELD für den rohen Import-Inhalt
+    import_raw_content = db.Column(db.Text, nullable=True)
+
     # Felder für performante Suche/Anzeige
     vorname = db.Column(db.String(100))
     nachname = db.Column(db.String(100))
@@ -84,5 +87,6 @@ class Kontakt(db.Model):
         # Aktualisiere die Suchfelder basierend auf den Daten
         self.vorname = data_dict.get("Vorname", data_dict.get("First Name", ""))
         self.nachname = data_dict.get("Nachname", data_dict.get("Last Name", ""))
+        # KORREKTUR: Tippfehler von data_get zu data_dict.get behoben
         self.firma = data_dict.get("Firma", data_dict.get("Company", ""))
         self.daten = json.dumps(data_dict)
