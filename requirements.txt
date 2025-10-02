@@ -5,6 +5,6 @@ Werkzeug
 extract-msg
 openpyxl
 vobject
-fpdf2
+fpdf2[SVG]
 Flask-Executor
 gender-guesser

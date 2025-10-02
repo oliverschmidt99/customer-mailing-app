@@ -22,12 +22,11 @@
         <div class="form-group-box">
             <h4 class="form-group-title">{{ gruppe.name }}</h4>
             {% for eigenschaft in gruppe.eigenschaften %}
-            {% set clean_name = eigenschaft.name|lower|replace(' ', '-')|replace('(', '')|replace(')', '') %}
             <div class="form-group">
-                <label for="new-contact-{{ clean_name }}">{{ eigenschaft.name }}:</label>
+                <label for="new-contact-{{ eigenschaft.name }}">{{ eigenschaft.name }}:</label>
 
                 {% if eigenschaft.datentyp == 'Auswahl' %}
-                <select id="new-contact-{{ clean_name }}" name="attribute_value_{{ eigenschaft.name }}"
+                <select id="new-contact-{{ eigenschaft.name }}" name="attribute_value_{{ eigenschaft.name }}"
                     class="input-field">
                     <option value="">-- Bitte wählen --</option>
                     {% for option in eigenschaft.optionen.split(',') %}
@@ -38,10 +37,10 @@
                     {% endfor %}
                 </select>
                 {% elif eigenschaft.datentyp == 'Datum' %}
-                <input id="new-contact-{{ clean_name }}" type="date" name="attribute_value_{{ eigenschaft.name }}"
+                <input id="new-contact-{{ eigenschaft.name }}" type="date" name="attribute_value_{{ eigenschaft.name }}"
                     value="{{ kontakt_daten_for_template.get(eigenschaft.name, '') }}" class="input-field">
                 {% else %}
-                <input id="new-contact-{{ clean_name }}" type="text" name="attribute_value_{{ eigenschaft.name }}"
+                <input id="new-contact-{{ eigenschaft.name }}" type="text" name="attribute_value_{{ eigenschaft.name }}"
                     value="{{ kontakt_daten_for_template.get(eigenschaft.name, '') }}" class="input-field">
                 {% endif %}
                 <input type="hidden" name="attribute_key_{{ eigenschaft.name }}" value="{{ eigenschaft.name }}">

@@ -78,7 +78,7 @@ def generate_labels_pdf(kontakte):
     logo_exists = logo_path and os.path.exists(logo_path)
 
     sender_font_size = config.get("export_sender_font_size", 7)
-    logo_size = config.get("export_logo_size", 8)
+    logo_width = config.get("export_logo_size", 8)
     recipient_font_size = config.get("export_recipient_font_size", 10)
 
     sender_align = config.get("export_sender_alignment", "L")
@@ -104,50 +104,60 @@ def generate_labels_pdf(kontakte):
         y = MARGIN_TOP + row * (LABEL_HEIGHT + V_SPACING)
 
         pdf.set_font("Arial", size=sender_font_size)
-        sender_x, sender_y = x + 3, y + 2
+        sender_x, sender_y_base = x + 3, y + 2
         safe_sender = sender_address.encode("latin-1", "replace").decode("latin-1")
 
+        # KORREKTUR: Logik zur vertikalen Zentrierung des Textes, unabhängig vom Logo
+        sender_area_height = 10  # Der Bereich ist 10mm hoch (von y+2 bis y+12)
+
+        # Bestimme die Textbreite basierend auf der Logo-Existenz
         if logo_exists:
-            text_width = LABEL_WIDTH - logo_size - 6
-
-            # KORREKTUR: Berechne einen Y-Offset, um den Text vertikal zu zentrieren.
-            # Annahme: Die Höhe des einzeiligen Textes ist ca. 3mm.
-            # Dies ist eine Annäherung, die für die meisten Logos gut funktioniert.
-            text_y_offset = (logo_size / 2) - (3 / 2)
-            if text_y_offset < 0:
-                text_y_offset = 0  # Verhindert, dass der Text nach oben rutscht
-
-            pdf.set_xy(sender_x, sender_y + text_y_offset)
-            pdf.multi_cell(w=text_width, h=3, text=safe_sender, align=sender_align)
-
-            logo_x = x + LABEL_WIDTH - logo_size - 3
-            pdf.image(logo_path, x=logo_x, y=sender_y, w=logo_size)
+            text_width = LABEL_WIDTH - logo_width - 6
         else:
-            pdf.set_xy(sender_x, sender_y)
-            pdf.multi_cell(w=LABEL_WIDTH - 6, h=3, text=safe_sender, align=sender_align)
+            text_width = LABEL_WIDTH - 6
 
+        # Berechne die Höhe des Text-Blocks durch eine Simulation
+        text_height = pdf.multi_cell(
+            w=text_width, h=3, text=safe_sender, dry_run=True, align=sender_align
+        )
+
+        # Berechne den Y-Offset, um den Text im 10mm-Bereich zu zentrieren
+        text_y_offset = (sender_area_height / 2) - (text_height / 2)
+        if text_y_offset < 0:
+            text_y_offset = 0  # Verhindert, dass der Text nach oben rutscht
+
+        # Platziere den Text an der zentrierten Position
+        pdf.set_xy(sender_x, sender_y_base + text_y_offset)
+        pdf.multi_cell(w=text_width, h=3, text=safe_sender, align=sender_align)
+
+        # Platziere das Logo (falls vorhanden) am oberen Rand des Absenderbereichs
+        if logo_exists:
+            try:
+                logo_x = x + LABEL_WIDTH - logo_width - 3
+                pdf.image(logo_path, x=logo_x, y=sender_y_base, w=logo_width)
+            except Exception as e:
+                print(f"WARNUNG: Logo konnte nicht verarbeitet werden. Fehler: {e}")
+
+        # --- Weiterer Code bleibt unverändert ---
         line_y = y + 12
         pdf.set_draw_color(180, 180, 180)
         pdf.line(x1=sender_x, y1=line_y, x2=x + LABEL_WIDTH - 3, y2=line_y)
 
         pdf.set_font("Arial", size=recipient_font_size)
 
-        if (
-            daten.get("Firmenname")
+        template_key = (
+            "address_format_company"
+            if daten.get("Firmenname")
             and str(daten.get("Firmenname")).strip().lower() != "none"
-        ):
-            template = config.get(
-                "address_format_company",
-                "{firmenname}\nz. Hd. {name_komplett}\n{strasse} {hausnummer}\n{plz} {ort}",
-            )
-        else:
-            template = config.get(
-                "address_format_private",
-                "{name_komplett}\n{strasse} {hausnummer}\n{plz} {ort}",
-            )
+            else "address_format_private"
+        )
+        template = config.get(template_key) or (
+            "{firmenname}\nz. Hd. {name_komplett}\n{strasse} {hausnummer}\n{plz} {ort}"
+            if template_key == "address_format_company"
+            else "{name_komplett}\n{strasse} {hausnummer}\n{plz} {ort}"
+        )
 
         address_block = _build_address_block(template, daten)
-
         pdf.set_xy(x + 3, line_y + 2)
         safe_address_block = address_block.encode("latin-1", "replace").decode(
             "latin-1"

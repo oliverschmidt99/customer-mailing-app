@@ -12,6 +12,9 @@ from werkzeug.utils import secure_filename
 from ..models import db, Vorlage, Kontakt
 from ..services import importer_service, exporter_service
 
+# KORREKTUR: Relative Import-Ebene korrigiert
+from .. import get_config
+
 bp = Blueprint("import_export", __name__)
 ALLOWED_EXTENSIONS = {"csv", "msg", "oft", "txt", "vcf", "xlsx"}
 
@@ -107,7 +110,7 @@ def get_import_status(task_id: str):
 
     if progress["status"] == "complete":
         result_data = progress["result"]
-        task_progress.pop(task_id, None)  # Sicher entfernen
+        task_progress.pop(task_id, None)
         return jsonify({"status": "complete", "data": result_data})
 
     return jsonify(progress)
@@ -149,9 +152,7 @@ def finalize_import():
 
 
 @bp.route("/export/<int:vorlage_id>/<string:file_format>")
-def export_data(
-    vorlage_id: int, file_format: str
-) -> Union[Response, tuple]:  # Korrigierte Typ-Annotation
+def export_data(vorlage_id: int, file_format: str) -> Union[Response, tuple]:
     """
     Exportiert die Kontaktdaten einer Vorlage im angegebenen Format.
     """
@@ -180,7 +181,7 @@ def export_data(
     if not content:
         return "Ungültiges Export-Format", 400
 
-    filename = f"{vorlage_model.name}_export_{datetime.now().strftime('%Y-%m-%d')}.{file_format.split('-')[0]}"  # Sicherer Dateiname
+    filename = f"{vorlage_model.name}_export_{datetime.now().strftime('%Y-%m-%d')}.{file_format.split('-')[0]}"
 
     return Response(
         content,
