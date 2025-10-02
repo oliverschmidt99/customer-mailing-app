@@ -27,7 +27,14 @@ def auflisten():
         vorlage_dict = {
             "id": v.id,
             "name": v.name,
-            "kontakte": [{"id": k.id, "daten": k.get_data()} for k in v.kontakte],
+            "kontakte": [
+                {
+                    "id": k.id,
+                    "daten": k.get_data(),
+                    "validation_acknowledged": k.validation_acknowledged,  # Hinzugefügt
+                }
+                for k in v.kontakte
+            ],
             "gruppen": [
                 {
                     "id": g.id,
@@ -38,7 +45,6 @@ def auflisten():
                             "name": e.name,
                             "datentyp": e.datentyp,
                             "optionen": e.optionen,
-                            # KORREKTUR: Fehlendes Attribut hinzugefügt
                             "allow_multiselect": e.allow_multiselect,
                         }
                         for e in g.eigenschaften

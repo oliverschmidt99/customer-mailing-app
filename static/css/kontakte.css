@@ -6,6 +6,42 @@
     margin-bottom: 1.5rem; 
 }
 
+/* NEU: Stile für die Steuerungselemente über der Tabelle */
+.table-controls {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    align-items: flex-end;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.control-group label {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.search-group {
+    max-width: 400px;
+}
+
+.checkbox-group {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.6rem; /* Damit es auf gleicher Höhe wie die Inputs ist */
+}
+
+.checkbox-group label {
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
 .select-vorlage {
     width: 300px;
 }
@@ -32,11 +68,49 @@
     padding: 0 0.5rem;
     height: 28px;
     width: 100%;
-    border: none;
+    border: 1px solid transparent; /* Platz für den Validierungs-Border lassen */
     background-color: transparent; 
-    border-radius: 0;
+    border-radius: 4px;
     outline: none;
+    transition: background-color 0.2s, border-color 0.2s;
 }
+
+/* NEU: Stil für ungültige Felder */
+.invalid-field {
+    position: relative;
+}
+.invalid-field .inline-edit-input,
+.invalid-field .inline-select {
+    border: 1px solid var(--delete-color);
+    background-color: #f8d7da33;
+}
+.invalid-field .inline-edit-input:focus,
+.invalid-field .inline-select:focus {
+     box-shadow: 0 0 0 2px var(--delete-color);
+}
+.invalid-field::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--delete-color);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    white-space: nowrap;
+    z-index: 10;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+.invalid-field:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+
 .inline-select {
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -48,15 +122,28 @@
     padding-right: 1.5rem;
 }
 .inline-edit-input:focus, .inline-select:focus {
-    outline: 2px solid var(--accent-color);
-    outline-offset: -2px;
+    outline: none;
     background-color: var(--card-active-bg);
+    border-color: var(--accent-color);
 }
 .table-container .icon-btn {
     width: 28px;
     height: 28px;
     padding: 5px;
 }
+/* NEU: Stile für die Quittierungs-Buttons */
+.icon-btn.acknowledge-btn {
+    background-color: #ffc107; /* Gelb für Warnung */
+    font-size: 14px;
+    line-height: 1;
+}
+.icon-btn.unacknowledge-btn {
+    background-color: var(--add-color); /* Grün für "in Ordnung" */
+    color: white;
+    font-size: 14px;
+    line-height: 1;
+}
+
 .group-box {
     margin-bottom: 1.5rem; 
     padding: 1rem;
@@ -97,6 +184,16 @@ tr.selected {
     border-right: 1px solid var(--border-color);
     margin-right: 1rem;
 }
+tr.incomplete-row {
+    background-color: #f8d7da33; /* Leichte Rotfärbung für die ganze Zeile */
+}
+.no-results-cell {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
 
 /* NEUE STILE FÜR KONTAKT-EDITOR */
 

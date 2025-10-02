@@ -68,6 +68,9 @@ class Kontakt(db.Model):
     # NEUES FELD für den rohen Import-Inhalt
     import_raw_content = db.Column(db.Text, nullable=True)
 
+    # NEUES FELD für die Quittierung von Validierungsfehlern
+    validation_acknowledged = db.Column(db.Boolean, default=False, nullable=False)
+
     # Felder für performante Suche/Anzeige
     vorname = db.Column(db.String(100))
     nachname = db.Column(db.String(100))

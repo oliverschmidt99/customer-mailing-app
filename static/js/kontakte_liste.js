@@ -47,10 +47,119 @@ document.addEventListener("DOMContentLoaded", () => {
       const tomSelectInstances = {};
       const tomSelectRefs = ref({});
 
+      const searchQuery = ref("");
+      const showIncompleteFirst = ref(false);
+      const validationFields = [
+        "Anrede",
+        "Vorname",
+        "Nachname",
+        "Firmenname",
+        "Straße",
+        "Hausnummer",
+        "PLZ",
+        "Ort",
+      ];
+
+      // --- Helper Functions ---
+      const getKontaktValidation = (kontakt) => {
+        const errors = {};
+        let isComplete = true;
+
+        // Prüfung auf Vollständigkeit
+        const requiredFields = [
+          "Anrede",
+          "Vorname",
+          "Nachname",
+          "Straße",
+          "Hausnummer",
+          "PLZ",
+          "Ort",
+        ];
+        for (const field of requiredFields) {
+          const value = kontakt.daten[field];
+          if (!value || String(value).trim() === "") {
+            errors[field] = "Feld darf nicht leer sein.";
+            isComplete = false;
+          }
+        }
+        // Firmenname ist nur "alternativ" erforderlich
+        if (
+          (!kontakt.daten["Firmenname"] ||
+            String(kontakt.daten["Firmenname"]).trim() === "") &&
+          (!kontakt.daten["Nachname"] ||
+            String(kontakt.daten["Nachname"]).trim() === "")
+        ) {
+          errors["Firmenname"] = "Firma oder Nachname muss gefüllt sein.";
+          isComplete = false;
+        }
+
+        // Prüfung auf Zahlen
+        const numericFields = ["PLZ", "Hausnummer"];
+        for (const field of numericFields) {
+          const value = kontakt.daten[field];
+          if (value && !/^\d+$/.test(String(value).trim())) {
+            errors[field] = "Nur Zahlen erlaubt.";
+            isComplete = false;
+          }
+        }
+        return { isComplete, errors };
+      };
+
       // --- Computed Properties ---
       const activeVorlage = computed(() => {
         if (!activeVorlageId.value) return null;
         return vorlagen.value.find((v) => v.id === activeVorlageId.value);
+      });
+
+      const processedKontakte = computed(() => {
+        if (!activeVorlage.value) return [];
+        const query = searchQuery.value.toLowerCase().trim();
+
+        const filtered = !query
+          ? activeVorlage.value.kontakte
+          : activeVorlage.value.kontakte.filter((k) =>
+              Object.values(k.daten).some((val) =>
+                String(val).toLowerCase().includes(query)
+              )
+            );
+
+        return filtered.map((k) => ({
+          ...k,
+          validation: getKontaktValidation(k),
+        }));
+      });
+
+      const sortedKontakte = computed(() => {
+        if (!processedKontakte.value) return [];
+
+        const kontakteCopy = [...processedKontakte.value];
+
+        if (showIncompleteFirst.value) {
+          kontakteCopy.sort((a, b) => {
+            const aIsProblem =
+              !a.validation.isComplete && !a.validation_acknowledged;
+            const bIsProblem =
+              !b.validation.isComplete && !b.validation_acknowledged;
+            if (aIsProblem && !bIsProblem) return -1;
+            if (!aIsProblem && bIsProblem) return 1;
+            return 0;
+          });
+        }
+
+        if (sortColumn.value) {
+          kontakteCopy.sort((a, b) => {
+            const valA = a.daten[sortColumn.value] || "";
+            const valB = b.daten[sortColumn.value] || "";
+            let comparison = String(valA).localeCompare(
+              String(valB),
+              undefined,
+              { numeric: true }
+            );
+            return sortDirection.value === "asc" ? comparison : -comparison;
+          });
+        }
+
+        return kontakteCopy;
       });
 
       const importTargetVorlage = computed(() => {
@@ -73,47 +182,6 @@ document.addEventListener("DOMContentLoaded", () => {
         return allTemplateProperties.value.filter((prop) =>
           prop.name.toLowerCase().includes(query)
         );
-      });
-
-      const sortedKontakte = computed(() => {
-        if (!activeVorlage.value) {
-          return [];
-        }
-        if (!sortColumn.value) {
-          return activeVorlage.value.kontakte;
-        }
-
-        const kontakteCopy = [...activeVorlage.value.kontakte];
-
-        kontakteCopy.sort((a, b) => {
-          const valA = a.daten[sortColumn.value] || "";
-          const valB = b.daten[sortColumn.value] || "";
-
-          let comparison = 0;
-
-          const dateA = new Date(
-            valA.replace(/(\d{2})\.(\d{2})\.(\d{4})/, "$3-$2-$1")
-          );
-          const dateB = new Date(
-            valB.replace(/(\d{2})\.(\d{2})\.(\d{4})/, "$3-$2-$1")
-          );
-
-          if (!isNaN(dateA) && !isNaN(dateB) && valA && valB) {
-            comparison = dateA - dateB;
-          } else {
-            const numA = parseFloat(valA);
-            const numB = parseFloat(valB);
-            if (!isNaN(numA) && !isNaN(numB)) {
-              comparison = numA - numB;
-            } else {
-              comparison = valA.toString().localeCompare(valB.toString());
-            }
-          }
-
-          return sortDirection.value === "asc" ? comparison : -comparison;
-        });
-
-        return kontakteCopy;
       });
 
       const isAllSelected = computed(() => {
@@ -170,6 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // --- Watchers ---
       watch(activeVorlageId, () => {
         selectedKontakte.value.clear();
+        searchQuery.value = "";
       });
 
       watch(
@@ -246,6 +315,30 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       // --- Methoden ---
+      const toggleValidationAcknowledgement = async (kontaktId) => {
+        const kontakt = activeVorlage.value.kontakte.find(
+          (k) => k.id === kontaktId
+        );
+        if (!kontakt) return;
+
+        try {
+          const response = await fetch(
+            `/api/kontakt/${kontaktId}/toggle-validation`,
+            { method: "POST" }
+          );
+          const result = await response.json();
+          if (result.success) {
+            kontakt.validation_acknowledged = result.new_status;
+          } else {
+            throw new Error(
+              result.error || "Status konnte nicht geändert werden."
+            );
+          }
+        } catch (error) {
+          alert(`Fehler: ${error.message}`);
+        }
+      };
+
       const handleVornameChange = async (event) => {
         const vorname = event.target.value;
         if (vorname && !newContactData.value["Anrede"]) {
@@ -509,31 +602,29 @@ document.addEventListener("DOMContentLoaded", () => {
       const closeAddModal = () => (isAddModalOpen.value = false);
 
       const updateField = async (kontakt, fieldName, newValue) => {
-        if (kontakt.daten[fieldName] === newValue) return;
+        const originalKontakt = activeVorlage.value.kontakte.find(
+          (k) => k.id === kontakt.id
+        );
+
+        if (originalKontakt.daten[fieldName] === newValue) return;
+
         try {
           const response = await fetch(`/api/kontakt/${kontakt.id}/update`, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              field: fieldName,
-              value: newValue,
-            }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ field: fieldName, value: newValue }),
           });
           if (!response.ok) throw new Error("Update fehlgeschlagen");
+
           const result = await response.json();
           if (result.success) {
-            const originalKontakt = activeVorlage.value.kontakte.find(
-              (k) => k.id === kontakt.id
-            );
-            if (originalKontakt) {
-              originalKontakt.daten[fieldName] = newValue;
-            }
+            originalKontakt.daten[fieldName] = newValue;
+          } else {
+            throw new Error(result.error || "Unbekannter Fehler");
           }
         } catch (error) {
-          console.error("Fehler:", error);
-          alert("Speichern fehlgeschlagen.");
+          console.error("Fehler beim Speichern des Feldes:", error);
+          alert(`Speichern fehlgeschlagen: ${error.message}`);
         }
       };
 
@@ -656,7 +747,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const getExportUrl = (format) => {
         if (!activeVorlageId.value) return "#";
-        return `/export/${activeVorlageId.value}/${format}`;
+        let baseUrl = `/export/${activeVorlageId.value}/${format}`;
+        if (selectedKontakte.value.size > 0) {
+          const ids = Array.from(selectedKontakte.value).join(",");
+          baseUrl += `?ids=${ids}`;
+        }
+        return baseUrl;
       };
 
       const openMultiSelectModal = (eigenschaft, kontakt) => {
@@ -747,6 +843,9 @@ document.addEventListener("DOMContentLoaded", () => {
         prevMappingStep,
         tomSelectRefs,
         handleVornameChange,
+        searchQuery,
+        showIncompleteFirst,
+        toggleValidationAcknowledgement,
       };
     },
   });

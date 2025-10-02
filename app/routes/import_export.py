@@ -155,14 +155,28 @@ def finalize_import():
 def export_data(vorlage_id: int, file_format: str) -> Union[Response, tuple]:
     """
     Exportiert die Kontaktdaten einer Vorlage im angegebenen Format.
+    Berücksichtigt optional eine Liste von Kontakt-IDs für den selektiven Export.
     """
     vorlage_model = db.session.get(Vorlage, vorlage_id)
     if not vorlage_model:
         return "Vorlage nicht gefunden", 404
 
-    kontakte_data = [
-        {"id": k.id, "daten": k.get_data()} for k in vorlage_model.kontakte
-    ]
+    kontakt_ids_str = request.args.get("ids")
+    kontakte_query = Kontakt.query.filter_by(vorlage_id=vorlage_id)
+
+    if kontakt_ids_str:
+        try:
+            kontakt_ids = [
+                int(kid) for kid in kontakt_ids_str.split(",") if kid.isdigit()
+            ]
+            if kontakt_ids:
+                kontakte_query = kontakte_query.filter(Kontakt.id.in_(kontakt_ids))
+        except (ValueError, TypeError):
+            return "Ungültige Kontakt-IDs angegeben", 400
+
+    kontakte_models = kontakte_query.all()
+
+    kontakte_data = [{"id": k.id, "daten": k.get_data()} for k in kontakte_models]
     vorlage_struktur = {
         "name": vorlage_model.name,
         "gruppen": [

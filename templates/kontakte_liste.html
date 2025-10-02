@@ -3,7 +3,7 @@
 {% block title %}Kontaktübersicht{% endblock %}
 
 {% block head_styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/kontakte.css', v='2.0') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/kontakte.css', v='2.2') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/filter.css', v='1.5') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/import_export.css', v='1.3') }}">
 {% endblock %}
@@ -39,10 +39,22 @@
         </div>
     </div>
 
-    <div class="view-switcher">
-        <select v-model="activeVorlageId" class="input-field select-vorlage">
-            <option v-for="vorlage in vorlagen" :key="vorlage.id" :value="vorlage.id">{[ vorlage.name ]}</option>
-        </select>
+    <div class="table-controls">
+        <div class="control-group">
+            <label for="vorlage-select">Angezeigte Vorlage:</label>
+            <select v-model="activeVorlageId" id="vorlage-select" class="input-field select-vorlage">
+                <option v-for="vorlage in vorlagen" :key="vorlage.id" :value="vorlage.id">{[ vorlage.name ]}</option>
+            </select>
+        </div>
+        <div class="control-group search-group">
+            <label for="search-input">Kontakte durchsuchen:</label>
+            <input type="text" v-model="searchQuery" id="search-input" class="input-field search-input"
+                placeholder="Suche...">
+        </div>
+        <div class="control-group checkbox-group">
+            <input type="checkbox" v-model="showIncompleteFirst" id="show-incomplete-toggle">
+            <label for="show-incomplete-toggle">Unvollständige zuerst anzeigen</label>
+        </div>
     </div>
 
     <div v-if="activeVorlage" class="filter-container">
@@ -91,12 +103,14 @@
             </thead>
             <tbody>
                 <tr v-for="kontakt in sortedKontakte" :key="kontakt.id"
-                    :class="{ selected: selectedKontakte.has(kontakt.id) }">
+                    :class="{ selected: selectedKontakte.has(kontakt.id), 'incomplete-row': !kontakt.validation.isComplete && !kontakt.validation_acknowledged }">
                     <td class="checkbox-col sticky-col">
                         <input type="checkbox" :checked="selectedKontakte.has(kontakt.id)"
                             @change="toggleSelection(kontakt.id)">
                     </td>
-                    <td v-for="eigenschaft in filteredEigenschaften" :key="eigenschaft.id">
+                    <td v-for="eigenschaft in filteredEigenschaften" :key="eigenschaft.id"
+                        :class="{ 'invalid-field': !kontakt.validation_acknowledged && kontakt.validation.errors[eigenschaft.name] }"
+                        :title="!kontakt.validation_acknowledged ? kontakt.validation.errors[eigenschaft.name] : ''">
 
                         <div v-if="eigenschaft.datentyp === 'Auswahl' && eigenschaft.allow_multiselect"
                             class="multiselect-display" @click="openMultiSelectModal(eigenschaft, kontakt)"
@@ -109,7 +123,7 @@
 
                         <input v-else-if="eigenschaft.datentyp === 'Text'" type="text" class="inline-edit-input"
                             :value="kontakt.daten[eigenschaft.name]"
-                            @change="updateField(kontakt, eigenschaft.name, $event.target.value)">
+                            @blur="updateField(kontakt, eigenschaft.name, $event.target.value)">
                         <select v-else-if="eigenschaft.datentyp === 'Auswahl'" class="inline-select"
                             :value="kontakt.daten[eigenschaft.name]"
                             @change="updateField(kontakt, eigenschaft.name, $event.target.value)">
@@ -131,6 +145,17 @@
                     </td>
                     <td class="actions-col sticky-col">
                         <div class="actions">
+                            <button v-if="!kontakt.validation.isComplete && !kontakt.validation_acknowledged"
+                                @click="toggleValidationAcknowledgement(kontakt.id)" class="icon-btn acknowledge-btn"
+                                title="Unvollständigkeit quittieren">
+                                ⚠️
+                            </button>
+                            <button v-if="!kontakt.validation.isComplete && kontakt.validation_acknowledged"
+                                @click="toggleValidationAcknowledgement(kontakt.id)" class="icon-btn unacknowledge-btn"
+                                title="Quittierung aufheben">
+                                ✔️
+                            </button>
+
                             <a :href="'/kontakte/editor?kontakt_id=' + kontakt.id" class="icon-btn edit"
                                 title="Bearbeiten">
                                 <img src="{{ url_for('static', filename='img/icon_edit.svg') }}" alt="Bearbeiten">
@@ -142,6 +167,11 @@
                                 </button>
                             </form>
                         </div>
+                    </td>
+                </tr>
+                <tr v-if="sortedKontakte.length === 0">
+                    <td :colspan="filteredEigenschaften.length + 3" class="no-results-cell">
+                        Keine Kontakte für die aktuellen Filter gefunden.
                     </td>
                 </tr>
             </tbody>
@@ -207,7 +237,6 @@
             </div>
         </div>
     </div>
-
     <div v-if="isImportModalOpen" class="modal-overlay">
         <div class="modal-content modal-large">
             <div class="modal-header">
@@ -317,7 +346,6 @@
             </div>
         </div>
     </div>
-
     <div v-if="isMultiSelectModalOpen" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">

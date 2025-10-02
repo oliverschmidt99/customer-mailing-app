@@ -70,7 +70,11 @@ def create_kontakt():
     db.session.add(neuer_kontakt)
     db.session.commit()
 
-    response_data = {"id": neuer_kontakt.id, "daten": neuer_kontakt.get_data()}
+    response_data = {
+        "id": neuer_kontakt.id,
+        "daten": neuer_kontakt.get_data(),
+        "validation_acknowledged": neuer_kontakt.validation_acknowledged,
+    }
     return jsonify({"success": True, "kontakt": response_data})
 
 
@@ -101,3 +105,26 @@ def get_anrede(vorname):
     """Ermittelt die Anrede für einen gegebenen Vornamen."""
     anrede = guess_anrede(vorname)
     return jsonify({"anrede": anrede})
+
+
+# NEUER ENDPUNKT
+@bp.route("/kontakt/<int:kontakt_id>/toggle-validation", methods=["POST"])
+def toggle_validation_acknowledged(kontakt_id):
+    """Schaltet den Quittierungsstatus für einen Kontakt um."""
+    kontakt = db.session.get(Kontakt, kontakt_id)
+    if not kontakt:
+        return jsonify({"success": False, "error": "Kontakt nicht gefunden"}), 404
+
+    try:
+        kontakt.validation_acknowledged = not kontakt.validation_acknowledged
+        db.session.commit()
+        return jsonify(
+            {
+                "success": True,
+                "message": "Status geändert.",
+                "new_status": kontakt.validation_acknowledged,
+            }
+        )
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
