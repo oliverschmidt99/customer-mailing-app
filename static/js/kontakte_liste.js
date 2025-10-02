@@ -246,6 +246,21 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       // --- Methoden ---
+      const handleVornameChange = async (event) => {
+        const vorname = event.target.value;
+        if (vorname && !newContactData.value["Anrede"]) {
+          try {
+            const response = await fetch(`/api/get-anrede/${vorname}`);
+            const data = await response.json();
+            if (data.anrede) {
+              newContactData.value["Anrede"] = data.anrede;
+            }
+          } catch (error) {
+            console.error("Fehler beim Abrufen der Anrede:", error);
+          }
+        }
+      };
+
       const initTomSelects = () => {
         for (const key in tomSelectInstances) {
           if (tomSelectInstances[key]) {
@@ -731,6 +746,7 @@ document.addEventListener("DOMContentLoaded", () => {
         nextMappingStep,
         prevMappingStep,
         tomSelectRefs,
+        handleVornameChange,
       };
     },
   });

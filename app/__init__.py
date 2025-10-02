@@ -50,6 +50,19 @@ def get_selection_options() -> Dict[str, List[str]]:
         return {}
 
 
+def get_config() -> Dict[str, Any]:
+    """Läd die allgemeine Konfiguration aus der JSON-Datei."""
+    try:
+        filepath = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "data", "config.json"
+        )
+        with open(filepath, "r", encoding="utf-8") as file:
+            return json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError) as err:
+        print(f"Fehler beim Laden von data/config.json: {err}")
+        return {}
+
+
 def create_app() -> Flask:
     """Erstellt und konfiguriert die Flask-Anwendung."""
     app = Flask(

@@ -7,6 +7,8 @@ import tempfile
 import shutil
 import sys
 from typing import Dict, Any, List, Union
+from ..gender_detector import get_anrede_from_vorname
+from ..titel_detector import extract_titles
 
 
 def _search_field(pattern: str, text: str) -> str:
@@ -134,6 +136,18 @@ def _parse_message_text(text: str) -> Dict[str, Any]:
         # Füge alle anderen Felder hinzu. Adressfelder wurden durch 1. strukturiert.
         if key not in data:
             data[key] = value
+
+    # 3. Anrede automatisch erkennen, falls nicht vorhanden
+    if "Anrede" not in data and "Vorname" in data:
+        anrede = get_anrede_from_vorname(data["Vorname"])
+        if anrede:
+            data["Anrede"] = anrede
+
+    # 4. Titel aus Position extrahieren, falls nicht schon vorhanden
+    if "Titel (akademisch)" not in data and "Position" in data:
+        titel = extract_titles(data["Position"])
+        if titel:
+            data["Titel (akademisch)"] = ", ".join(titel)
 
     return {k: v for k, v in data.items() if v}
 

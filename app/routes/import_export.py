@@ -3,7 +3,7 @@
 import os
 import uuid
 from datetime import datetime
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Union
 
 from flask import Blueprint, request, jsonify, flash, url_for, Response, current_app
 from flask_executor import Executor
@@ -149,7 +149,9 @@ def finalize_import():
 
 
 @bp.route("/export/<int:vorlage_id>/<string:file_format>")
-def export_data(vorlage_id: int, file_format: str) -> Tuple[Response, int] | Response:
+def export_data(
+    vorlage_id: int, file_format: str
+) -> Union[Tuple[Response, int], Response]:
     """
     Exportiert die Kontaktdaten einer Vorlage im angegebenen Format.
     """

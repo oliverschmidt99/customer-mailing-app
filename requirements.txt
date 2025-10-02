@@ -7,3 +7,4 @@ openpyxl
 vobject
 fpdf2
 Flask-Executor
+gender-guesser

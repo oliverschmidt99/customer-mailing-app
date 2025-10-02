@@ -9,49 +9,71 @@
 {% block content %}
 <h1>Einstellungen</h1>
 
-<div class="card">
-    <h2>Design</h2>
-    <div class="theme-switcher-container">
-        <label for="theme-toggle" class="theme-switcher-label">Dark Mode</label>
-        <label class="switch">
-            <input type="checkbox" id="theme-toggle">
-            <span class="slider round"></span>
-        </label>
-    </div>
-</div>
+<div id="settings-app">
 
-<div id="selection-options-app" class="card">
-    <h2>Globale Auswahloptionen</h2>
-    <p>Hier kannst du die vordefinierten Listen für "Auswahl"-Felder in deinen Vorlagen zentral verwalten.</p>
-
-    <div v-for="(optionGroup, index) in options" :key="index" class="option-group">
-        <div class="form-group">
-            <label>Name der Liste:</label>
-            <input type="text" v-model="optionGroup.name" class="input-field" placeholder="z.B. Anrede, Status">
+    <div class="card">
+        <h2>Design</h2>
+        <div class="theme-switcher-container">
+            <label for="theme-toggle" class="theme-switcher-label">Dark Mode</label>
+            <label class="switch">
+                <input type="checkbox" id="theme-toggle">
+                <span class="slider round"></span>
+            </label>
         </div>
-        <div class="form-group">
-            <label>Werte (kommagetrennt):</label>
-            <textarea v-model="optionGroup.values" class="input-field" rows="2"
-                placeholder="z.B. Herr, Frau, Divers"></textarea>
-        </div>
-        <button type="button" @click="removeOption(index)" class="button danger small">
-            <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Löschen">
-            Liste entfernen
-        </button>
     </div>
 
-    <div class="button-group option-actions">
-        <button type="button" @click="addOption" class="button secondary">
-            <img src="{{ url_for('static', filename='img/icon_plus.svg') }}" alt="Hinzufügen">
-            Neue Liste hinzufügen
-        </button>
-        <button type="button" @click="saveOptions" class="button" :disabled="!hasChanges">
-            Änderungen speichern
-        </button>
+    <div class="card">
+        <h2>Absenderadresse für Exporte</h2>
+        <p>Diese Adresse wird als Absender auf den PDF-Adressaufklebern verwendet.</p>
+        <div class="form-group">
+            <label for="sender-address">Absender:</label>
+            <input type="text" id="sender-address" v-model="senderAddress" class="input-field">
+        </div>
+        <div class="button-group option-actions">
+            <button type="button" @click="saveSenderAddress" class="button" :disabled="!hasAddressChanges">
+                Adresse speichern
+            </button>
+        </div>
+        <div v-if="addressSaveStatus"
+            :class="['save-status', { 'success': isAddressSuccess, 'error': !isAddressSuccess }]">
+            {[ addressSaveStatus ]}
+        </div>
     </div>
-    <div v-if="saveStatus" :class="['save-status', { 'success': isSuccess, 'error': !isSuccess }]">
-        {[ saveStatus ]}
+
+    <div id="selection-options-app" class="card">
+        <h2>Globale Auswahloptionen</h2>
+        <p>Hier kannst du die vordefinierten Listen für "Auswahl"-Felder in deinen Vorlagen zentral verwalten.</p>
+
+        <div v-for="(optionGroup, index) in options" :key="index" class="option-group">
+            <div class="form-group">
+                <label>Name der Liste:</label>
+                <input type="text" v-model="optionGroup.name" class="input-field" placeholder="z.B. Anrede, Status">
+            </div>
+            <div class="form-group">
+                <label>Werte (kommagetrennt):</label>
+                <textarea v-model="optionGroup.values" class="input-field" rows="2"
+                    placeholder="z.B. Herr, Frau, Divers"></textarea>
+            </div>
+            <button type="button" @click="removeOption(index)" class="button danger small">
+                <img src="{{ url_for('static', filename='img/icon_delete.svg') }}" alt="Löschen">
+                Liste entfernen
+            </button>
+        </div>
+
+        <div class="button-group option-actions">
+            <button type="button" @click="addOption" class="button secondary">
+                <img src="{{ url_for('static', filename='img/icon_plus.svg') }}" alt="Hinzufügen">
+                Neue Liste hinzufügen
+            </button>
+            <button type="button" @click="saveOptions" class="button" :disabled="!hasChanges">
+                Änderungen speichern
+            </button>
+        </div>
+        <div v-if="saveStatus" :class="['save-status', { 'success': isSuccess, 'error': !isSuccess }]">
+            {[ saveStatus ]}
+        </div>
     </div>
+
 </div>
 
 <div class="card">
@@ -70,6 +92,9 @@
 
 <script type="application/json" id="selection-options-data">
     {{ selection_options|tojson|safe }}
+</script>
+<script type="application/json" id="config-data">
+    {{ config|tojson|safe }}
 </script>
 {% endblock %}
 

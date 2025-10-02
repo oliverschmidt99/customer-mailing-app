@@ -1,23 +1,6 @@
 {
-  "name": "Kunde einfach",
+  "name": "Kunden Post",
   "gruppen": [
-    {
-      "name": "Post-Art",
-      "eigenschaften": [
-        {
-          "name": "Post-Art",
-          "datentyp": "Auswahl",
-          "optionen": "Digital 💻, Post 📬, Kalender 📅, Persönlich 🤝",
-          "allow_multiselect": false
-        },
-        {
-          "name": "Zustand",
-          "datentyp": "Auswahl",
-          "optionen": "Offen 📂, In Bearbeitung 🔧, Erledigt ✅, Abgelehnt ❌, Archiviert 📦, Aktiv 🚀, Inaktiv ⏸️",
-          "allow_multiselect": false
-        }
-      ]
-    },
     {
       "name": "Personendaten",
       "eigenschaften": [
@@ -93,12 +76,6 @@
         },
         {
           "name": "Ort",
-          "datentyp": "Text",
-          "optionen": "",
-          "allow_multiselect": false
-        },
-        {
-          "name": "Bundesland",
           "datentyp": "Text",
           "optionen": "",
           "allow_multiselect": false

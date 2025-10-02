@@ -192,6 +192,9 @@
                             <input v-else-if="e.datentyp === 'Datum'" :id="'new-contact-' + e.name" type="date"
                                 v-model="newContactData[e.name]" class="input-field">
 
+                            <input v-else-if="e.name === 'Vorname'" :id="'new-contact-' + e.name" type="text"
+                                v-model="newContactData[e.name]" class="input-field" @change="handleVornameChange">
+
                             <input v-else :id="'new-contact-' + e.name" type="text" v-model="newContactData[e.name]"
                                 class="input-field">
                         </div>

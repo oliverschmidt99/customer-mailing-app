@@ -1,6 +1,9 @@
 # app/services/exporters/pdf_exporter.py
 """This module handles the generation of PDF files for contacts."""
 from fpdf import FPDF
+from ... import (
+    get_config,
+)  # KORREKTUR: Von '..' auf '...' geändert für den korrekten relativen Pfad
 
 # --- Konstanten für Avery Zweckform 3424 Etiketten (in mm) ---
 LABEL_WIDTH = 70
@@ -15,9 +18,6 @@ MARGIN_LEFT = 4.75
 # Abstand zwischen den Etiketten (nicht vorhanden bei 3424)
 H_SPACING = 0
 V_SPACING = 0
-
-# --- NEU: Absenderadresse ---
-SENDER_ADDRESS = "Rolf Janssen GmbH, Musterstraße 123, 26603 Aurich"
 
 
 def _get_formatted_name(daten):
@@ -105,6 +105,11 @@ def generate_labels_pdf(kontakte):
     """
     Erstellt eine PDF-Datei mit Adressaufklebern im Format Avery Zweckform 3424.
     """
+    config = get_config()
+    sender_address = config.get(
+        "sender_address", "Rolf Janssen GmbH, Musterstraße 123, 26603 Aurich"
+    )
+
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.set_auto_page_break(auto=False, margin=0)
     pdf.add_page()
@@ -122,18 +127,26 @@ def generate_labels_pdf(kontakte):
         # --- Absenderzeile hinzufügen (kleinere Schrift) ---
         pdf.set_font("Arial", size=7)
         pdf.set_xy(x + 3, y + 2)  # Position etwas oberhalb der Hauptadresse
-        safe_sender = SENDER_ADDRESS.encode("latin-1", "replace").decode("latin-1")
+        safe_sender = sender_address.encode("latin-1", "replace").decode("latin-1")
         pdf.cell(w=LABEL_WIDTH - 6, h=3, text=safe_sender, align="L")
 
         # --- Hauptadresse (normale Schrift) ---
         pdf.set_font("Arial", size=10)
-        formatted_name = _get_formatted_name(daten)
-        line1 = daten.get("Firmenname", "") or formatted_name
 
+        firmenname = daten.get("Firmenname", "")
+        formatted_name = _get_formatted_name(daten)
+
+        line1 = ""
         line2 = ""
-        if daten.get("Firmenname") and formatted_name:
-            if formatted_name != daten.get("Anrede", ""):
-                line2 = formatted_name
+
+        if firmenname:
+            # Vorlage 1: Firma
+            line1 = firmenname
+            if formatted_name and formatted_name != daten.get("Anrede", ""):
+                line2 = f"z. Hd. {formatted_name}"
+        else:
+            # Vorlage 2: Privatperson
+            line1 = formatted_name
 
         strasse = daten.get("Straße", "")
         hausnummer = daten.get("Hausnummer", "")

@@ -1,6 +1,10 @@
 # app/services/importers/vcf_importer.py
-import vobject
+"""This module handles the import of .vcf files."""
 import re
+import vobject
+from vobject.base import VObjectError
+from ..gender_detector import get_anrede_from_vorname
+from ..titel_detector import extract_titles
 
 
 def parse_vcf(file_path):
@@ -10,7 +14,7 @@ def parse_vcf(file_path):
 
     try:
         vcard = vobject.readOne(vcard_text)
-    except Exception:
+    except VObjectError:
         # Manchmal haben VCFs Probleme, versuche es Zeile für Zeile
         vcard = vobject.readOne(vcard_text, ignoreUnreadable=True)
 
@@ -51,5 +55,17 @@ def parse_vcf(file_path):
         data["Ort"] = addr.city
         data["Postleitzahl"] = addr.code
         data["Land"] = addr.country
+
+    # Anrede automatisch erkennen, falls nicht vorhanden
+    if "Anrede" not in data and "Vorname" in data:
+        anrede = get_anrede_from_vorname(data["Vorname"])
+        if anrede:
+            data["Anrede"] = anrede
+
+    # Titel aus Position extrahieren, falls nicht schon vorhanden
+    if "Titel (akademisch)" not in data and "Position" in data:
+        titel = extract_titles(data["Position"])
+        if titel:
+            data["Titel (akademisch)"] = ", ".join(titel)
 
     return [data]  # In eine Liste packen, um konsistent mit anderen Importern zu sein
